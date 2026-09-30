@@ -46,6 +46,8 @@
 html{-webkit-text-size-adjust:100%}
 button,.habitat,canvas{-webkit-user-select:none;user-select:none;touch-action:manipulation}
 html,body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;padding-inline:max(16px,env(safe-area-inset-left));padding-block:calc(env(safe-area-inset-top) + 14px) calc(env(safe-area-inset-bottom) + 28px);overscroll-behavior:none}
 .app{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
@@ -512,6 +514,7 @@ function endGame(rounds){
   burst('sparkle', 6 + rounds);
 }
 $('gameStart').addEventListener('click', () => {
+  if (!state){ $('gameOverlay').hidden = true; return; }
   if (state.energy < 15){ $('gameMsg').textContent = `${state.name} è stanco, lascialo riposare.`; return; }
   seq = []; $('gameStart').hidden = true; nextRound();
 });
