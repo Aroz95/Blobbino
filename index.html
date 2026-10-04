@@ -197,6 +197,19 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
 .mrow.done .mp{color:var(--good)}
 .mhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .mhead .chest{font-size:13px;font-weight:800;color:var(--muted)}
+.rooms{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 1px}
+.rooms::-webkit-scrollbar{display:none}
+.room{flex:none;position:relative;display:flex;align-items:center;gap:6px;padding:6px 12px 6px 8px;border-radius:999px;border:2px solid var(--line);background:var(--panel);font:800 12.5px var(--f-body);color:var(--ink);cursor:pointer}
+.room .e{font-size:18px;line-height:1}
+.room[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.room.alert::after{content:"";position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 2px var(--bg)}
+.room.house{color:var(--muted)}
+.room:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.swatches{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.sw{width:38px;height:38px;border-radius:50%;border:3px solid var(--panel);box-shadow:0 0 0 2px var(--line);cursor:pointer}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--accent)}
+.ability{font-size:13px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-top:4px}
+.subhead{font-weight:800;font-size:14px;margin:14px 0 8px}
 .big-em{font-size:56px;text-align:center;line-height:1.1}
 .sheet-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 
@@ -240,17 +253,18 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
   </header>
 
   <section class="tab" id="tab-casa">
+    <div class="rooms" id="roomBar" hidden></div>
     <div class="habitat" id="habitat">
       <canvas id="scene" aria-label="La cameretta. Tocca, strofina e trascina per giocare con il tuo blob."></canvas>
       <div class="away" id="away" hidden></div>
       <div class="bubble" id="bubble" role="status" aria-live="polite"></div>
       <form class="namer" id="namer" hidden>
-        <label for="nameInput">Come chiamerai il tuo blob?</label>
+        <label for="nameInput" id="namerLabel">Come chiamerai il tuo blob?</label>
         <div class="row">
           <input id="nameInput" maxlength="14" autocomplete="off" placeholder="Mochi">
           <button class="btn" type="submit">Accogli l'uovo</button>
         </div>
-        <p>L'uovo si schiude in meno di un minuto. Intanto puoi accarezzarlo per scaldarlo.</p>
+        <p id="namerText">L'uovo si schiude in meno di un minuto. Intanto puoi accarezzarlo per scaldarlo.</p>
         <button class="linkbtn" id="importLink" type="button" style="align-self:flex-start;padding:0">Hai già un blob su un altro dispositivo? Trasferiscilo</button>
       </form>
     </div>
@@ -285,6 +299,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
       <div class="row"><span class="label">Amicizia</span><span class="lv" id="lvText">Livello 1</span></div>
       <div class="bar big"><i id="xpBar" style="width:0%"></i></div>
       <div class="next" id="nextUnlock"></div>
+      <div class="ability" id="abilityLine" hidden></div>
       <div class="row" style="margin-top:4px"><span class="next" id="trustHint"></span><span class="next" style="white-space:nowrap">Fiducia <b id="trustVal">60</b></span></div>
     </section>
 
@@ -314,6 +329,10 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
   </section>
 
   <section class="tab" id="tab-album" hidden>
+    <section class="card">
+      <h2 class="sec">Enciclopedia dei blob <span class="count" id="dexCount"></span></h2>
+      <div class="stickers" id="dex"></div>
+    </section>
     <section class="card">
       <h2 class="sec" id="knowTitle">I suoi gusti</h2>
       <div class="traits" id="traits"></div>
@@ -373,6 +392,27 @@ const STAR = '<svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M1
 /* ================= contenuti ================= */
 const STATS = [['hunger','Pancia'],['thirst','Acqua'],['fun','Gioia'],['energy','Energia'],['hygiene','Pulizia'],['health','Salute']];
 const statColor = {hunger:'#ff9ec7',thirst:'#7cc8ff',fun:'#ffc94f',energy:'#a893ff',hygiene:'#6fdcb6',health:'#ff7eb0'};
+const FORMS = {
+  baby:{n:'Cucciolo', e:'🐣', pal:{a:'#ffd3e6', b:'#ff9fca'}},
+  morbidello:{n:'Morbidello', e:'🧸', child:true, pal:{a:'#fde2ff', b:'#e4a6f0'}, ab:'Un piccolo coccolone: diventerà tenero, goloso, curato, ridanciano o nottambulo.', hint:'Da piccolo: tante cure'},
+  saltello:{n:'Saltello', e:'🦘', child:true, pal:{a:'#c2f5e2', b:'#78d9b6'}, ab:'Un piccolo scalmanato: diventerà giocherellone, spericolato, sportivo, avventuroso o da circo.', hint:'Da piccolo: tanto gioco'},
+  nuvola:{n:'Nuvola', e:'☁️', fam:'morbidello', seed:'pet', pal:{a:'#eef8ff', b:'#a9d6fb'}, trend:'tenera', ab:'Quando lo lanci plana leggero come una nuvola.', hint:'Tante carezze'},
+  budino:{n:'Budino', e:'🍮', fam:'morbidello', seed:'sweet', pal:{a:'#ffe6c9', b:'#ffab76'}, trend:'golosa', ab:'I dolci lo rendono felicissimo e attira i topolini.', hint:'Tanti dolci'},
+  bocciolo:{n:'Bocciolo', e:'🌸', fam:'morbidello', seed:'healthy', pal:{a:'#f3ffe9', b:'#9fdc9a'}, trend:'curata', ab:'Fa sbocciare fiori che valgono stelline e si sporca meno.', hint:'Frutta, verdura e pulizia'},
+  gelatina:{n:'Gelatina', e:'🍬', fam:'morbidello', seed:'tickle', pal:{a:'#f1dcff', b:'#b48cff'}, trend:'ridanciana', ab:'Rimbalza come una molla: i lanci durano il triplo.', hint:'Tanto solletico'},
+  lumino:{n:'Lumino', e:'✨', fam:'morbidello', seed:'night', dark:true, pal:{a:'#6575c0', b:'#2c3570'}, trend:'nottambula', ab:'Brilla al buio e di notte attira le stelle cadenti.', hint:'Tante coccole di sera'},
+  stellino:{n:'Stellino', e:'⭐', fam:'saltello', seed:'game', pal:{a:'#fff0b8', b:'#ffc84a'}, trend:'giocherellona', ab:'Nei minigiochi guadagna il 50% di stelline in più.', hint:'Tanti minigiochi'},
+  razzo:{n:'Razzo', e:'🚀', fam:'saltello', seed:'throw', pal:{a:'#ffe1e1', b:'#ff6b6b'}, trend:'spericolata', ab:'Quando lo lanci vola altissimo con la scia di fuoco.', hint:'Tanti lanci'},
+  pallino:{n:'Pallino', e:'🏀', fam:'saltello', seed:'ball', pal:{a:'#ffd9b0', b:'#ff8c3a'}, trend:'sportiva', ab:'Tira a canestro da solo, quasi non sbaglia e ti regala stelline.', hint:'Tanta palla e canestri'},
+  esploratore:{n:'Esploratore', e:'🎒', fam:'saltello', seed:'walk', pal:{a:'#f3e3c3', b:'#c9a46a'}, trend:'avventurosa', ab:'Le passeggiate durano meno e trova più figurine.', hint:'Tante passeggiate'},
+  saltimbanco:{n:'Saltimbanco', e:'🎪', fam:'saltello', seed:'trick', pal:{a:'#e7dcff', b:'#9b7bff'}, trend:'da circo', ab:'Fa spettacoli da solo e il pubblico lascia stelline.', hint:'Tanti trucchi'},
+  muschio:{n:'Muschio', e:'🌿', secret:true, pal:{a:'#d7efcb', b:'#95c882'}, trend:'selvatica', ab:'Se la cava da solo: i bisogni calano più piano.', hint:'Forma segreta'},
+  ombra:{n:'Ombra', e:'🌑', secret:true, dark:true, pal:{a:'#77708a', b:'#3a3444'}, trend:'misteriosa', ab:'Passa attraverso i muri e i fantasmini sono suoi amici.', hint:'Forma segreta'}
+};
+const SHINY = {a:'#fff7d1', b:'#f5c542'};
+const ROOM_NAMES = ['Cameretta', 'Stanza dei giochi', 'Soffitta', 'Serra'];
+const ROOM_PRICES = [0, 0, 120, 250];
+const THEMES = {rosa:{n:'Rosa', h:330}, menta:{n:'Menta', h:160}, lilla:{n:'Lilla', h:270}, cielo:{n:'Cielo', h:205}, pesca:{n:'Pesca', h:22}, limone:{n:'Limone', h:52}};
 const BRANCHES = {
   nuvola:  {name:'Nuvola',  desc:'morbido e sereno, cresciuto con tante attenzioni'},
   stellino:{name:'Stellino',desc:'pieno di energia, adora giocare'},
@@ -511,44 +551,101 @@ const LETTERS = [
 const TRICK_NAME = {wave:'il saluto', jump:'il salto mortale', spin:'la giravolta', dance:'il balletto', roll:'la capriola'};
 
 /* ================= stato ================= */
-let state = null;
+let world = null, state = null, activeRoom = 0;
 let tab = 'casa', shopSec = 'food', unseenStickers = false, tool = 'hand';
 let sound = true;
 try { sound = localStorage.getItem('blobbino-sound') !== 'off'; } catch {}
 let bubbleTimer = 0, toastTimer = 0, particles = [];
 
+const GK = new Set(['coins','inv','hats','furn','stickers','daily','records','wishesDone','missions','dayMood','hoops','chests','lastEv','dex']);
+const RK = new Set(['furnOn','messes','gift','lastGift','poops','theme']);
+const roomOf = b => world ? world.rooms.find(r => r.blob === b.id) || null : null;
+const RDEF = {furnOn:[], messes:[], poops:0, gift:null, lastGift:0, theme:'rosa'};
+function view(b){
+  return new Proxy(b, {
+    get(t, k){ if (GK.has(k)) return world[k]; if (RK.has(k)){ const r = roomOf(t); return r ? r[k] : RDEF[k]; } return t[k]; },
+    set(t, k, v){ if (GK.has(k)) world[k] = v; else if (RK.has(k)){ const r = roomOf(t); if (r) r[k] = v; } else t[k] = v; return true; }
+  });
+}
+const nm = b => (b && b.name) || 'il piccolo';
+const houseBlobs = () => world ? world.blobs.filter(b => roomOf(b)) : [];
+const blobById = id => world && world.blobs.find(b => b.id === id);
+
 function rollTraits(){
   const f = TASTY.slice().sort(() => Math.random() - .5);
   return {favFood:f[0], hateFood:f[1], favGame:pick(Object.keys(GAMES)), favPlace:pick(Object.keys(PLACES))};
 }
-function migrate(s){
-  if (!s) return s;
+function newRoom(i){ return {name: ROOM_NAMES[i] || `Stanza ${i + 1}`, theme: ['rosa','menta','lilla','cielo'][i] || 'rosa', blob:null, furnOn:[], messes:[], poops:0, gift:null, lastGift:0}; }
+function newBlob(name, parent){
   const now = Date.now();
-  const d = {coins:20, inv:{mela:2, biscotto:1}, hats:[], hat:null, furn:[], furnOn:[], known:{}, stickers:{},
-    wish:null, nextWishAt:(s.hatchAt || now) + 90e3, walk:null, daily:{last:'', streak:0},
-    records:{memory:0, catch:0, hide:0}, wishesDone:0, walks:0, snacks:0, plays:0, cuddles:[],
-    xp:0, level:1, messes:[], gift:null, lastGift:0, tricksDone:0,
-    dayMood:null, missions:null, hoops:0, chests:0, lastEv:null};
-  for (const k in d) if (s[k] === undefined) s[k] = d[k];
-  if (!s.traits) s.traits = rollTraits();
-  if (s.stage !== 'egg' && !s.stickers.schiusa) s.stickers.schiusa = s.hatchedAt || now;
-  if (s.stage === 'adult' && s.branch && !s.stickers['evo_' + s.branch]) s.stickers['evo_' + s.branch] = now;
-  if (s.wish && !s.wish.type) s.wish = null;
-  if (s.records.hoop === undefined) s.records.hoop = 0;
-  s.v = 3;
-  return s;
-}
-function newState(name){
-  const now = Date.now();
-  return migrate({v:3, name, stage:'egg', branch:null, born:now, hatchAt:now + 40000, hatchedAt:null, last:now,
+  const b = {id: 'b' + now.toString(36) + rnd(100, 999), name: name || '', gen: parent ? (parent.gen || 1) + 1 : 1,
+    parent: parent ? parent.id : null, parentName: parent ? parent.name : null,
+    stage:'egg', form:null, childForm:null, shiny: Math.random() < (parent && parent.shiny ? 1/8 : 1/30),
+    born:now, hatchAt: now + (parent ? 3*MIN : 40000), hatchedAt:null, adultAt:null, lastEgg:0, last:now,
     hunger:80, thirst:80, fun:70, energy:90, hygiene:100, health:100, trust:60,
-    sick:false, sleeping:false, distrust:false, poops:0, poopClock:0, riskClock:0,
-    careSum:0, funSum:0, trustSum:0, careH:0,
-    log:[{t:now, m:`${name} è un uovo tiepido. Accarezzalo per scaldarlo!`}]});
+    sick:false, sleeping:false, distrust:false, poopClock:0, riskClock:0,
+    care:{}, traits: rollTraits(), known:{}, hat:null, wish:null, nextWishAt: now + 3*MIN, walk:null,
+    snacks:0, plays:0, cuddles:[], xp:0, level:1, tricksDone:0, walks:0,
+    log:[{t:now, m: parent ? `${parent.name} ha deposto un uovo!` : `${name} è un uovo tiepido. Accarezzalo per scaldarlo!`}]};
+  if (parent){ const pf = FORMS[parent.form]; if (pf && pf.seed) b.care[pf.seed] = 4; }
+  return b;
+}
+function newWorld(){
+  return {v:4, coins:20, inv:{mela:2, biscotto:1}, hats:[], furn:[], stickers:{}, daily:{last:'', streak:0},
+    records:{memory:0, catch:0, hide:0, hoop:0}, wishesDone:0, missions:null, dayMood:null, hoops:0, chests:0, lastEv:null,
+    dex:{}, rooms:[newRoom(0)], blobs:[], valley:[], activeRoom:0};
+}
+function migrateBlob(b){
+  const now = Date.now();
+  const d = {id:'b1', gen:1, parent:null, form:null, childForm:null, shiny:false, adultAt:null, lastEgg:0, care:{}, known:{}, hat:null,
+    wish:null, nextWishAt: now + 3*MIN, walk:null, snacks:0, plays:0, cuddles:[], xp:0, level:1, tricksDone:0, walks:0, poopClock:0, riskClock:0};
+  for (const k in d) if (b[k] === undefined) b[k] = d[k];
+  if (!b.traits) b.traits = rollTraits();
+  if (!b.form && b.branch) b.form = b.branch;
+  if (b.stage === 'child' && !b.childForm) b.childForm = b.plays > 3 ? 'saltello' : 'morbidello';
+  if (b.stage === 'adult' && !FORMS[b.form]) b.form = 'nuvola';
+  if (b.stage === 'adult' && !b.adultAt) b.adultAt = now;
+  if (b.wish && !b.wish.type) b.wish = null;
+  return b;
+}
+function migrateWorld(x){
+  if (!x) return null;
+  if (!x.blobs){
+    const old = x, w = newWorld();
+    for (const k of GK) if (old[k] !== undefined) w[k] = old[k];
+    const r = w.rooms[0];
+    for (const k of RK) if (old[k] !== undefined) r[k] = old[k];
+    r.theme = r.theme || 'rosa';
+    const b = Object.assign({}, old);
+    for (const k of GK) delete b[k];
+    for (const k of RK) delete b[k];
+    migrateBlob(b);
+    w.blobs.push(b); r.blob = b.id;
+    if (b.stage === 'adult') w.dex[b.form] = {t: Date.now(), shiny: !!b.shiny};
+    if (b.stage === 'child') w.dex[b.childForm] = {t: Date.now(), shiny:false};
+    if (b.stage !== 'egg') w.dex.baby = {t: b.hatchedAt || Date.now(), shiny:false};
+    x = w;
+  }
+  const w0 = newWorld();
+  for (const k in w0) if (x[k] === undefined) x[k] = w0[k];
+  if (x.records.hoop === undefined) x.records.hoop = 0;
+  for (const r of x.rooms) for (const k in RDEF) if (r[k] === undefined) r[k] = Array.isArray(RDEF[k]) ? [] : RDEF[k];
+  x.blobs.forEach(migrateBlob);
+  x.valley = x.valley.filter(id => x.blobs.some(b => b.id === id));
+  x.v = 4;
+  return x;
+}
+function seeForm(f, b){
+  if (!world.dex[f]){ world.dex[f] = {t: Date.now(), shiny: !!b.shiny}; unseenStickers = true; return true; }
+  if (b.shiny && !world.dex[f].shiny){ world.dex[f].shiny = true; unseenStickers = true; return true; }
+  return false;
 }
 function log(s, t, m){ s.log.unshift({t, m}); s.log.length = Math.min(s.log.length, 14); }
 function core(s){ return (s.hunger + s.thirst + s.fun + s.energy + s.hygiene) / 5; }
-function kindOf(s){ return s.stage === 'adult' ? s.branch : (s.stage === 'child' ? 'child' : 'baby'); }
+function kindOf(s){ return s.stage === 'adult' ? s.form : s.stage === 'child' ? s.childForm : 'baby'; }
+function palFor(s){ return s.shiny && s.stage !== 'egg' ? SHINY : (FORMS[kindOf(s)] || FORMS.baby).pal; }
+const blobEmoji = b => !b ? '·' : b.stage === 'egg' ? '🥚' : (FORMS[kindOf(b)] || FORMS.baby).e;
+const isForm = f => !!state && state.stage === 'adult' && state.form === f;
 function giveSticker(s, id, t){
   if (s.stickers[id]) return false;
   s.stickers[id] = t || Date.now(); unseenStickers = true;
@@ -564,13 +661,29 @@ function reveal(s, key){
 const learned = tr => !!state && LEVELS.slice(0, state.level).some(l => l.trick === tr);
 const perk = p => !!state && LEVELS.slice(0, state.level).some(l => l.perk === p);
 
-function pickBranch(s){
-  const H = Math.max(s.careH, 1), care = s.careSum / H, fun = s.funSum / H, trust = s.trustSum / H;
-  const ageD = Math.max((s.last - s.hatchedAt) / HOUR / 24, .25);
-  if (trust < 45 || care < 40) return 'muschio';
-  if (s.snacks / ageD >= 4) return 'budino';
-  if (fun - care >= 3 && s.plays >= 6) return 'stellino';
-  return 'nuvola';
+/* evoluzione: le scelte di gioco decidono la forma */
+function note(k, n = 1){
+  const s = state; if (!s || s.stage === 'egg' || s.stage === 'adult') return;
+  s.care[k] = (s.care[k] || 0) + n;
+  const h = new Date().getHours(); if (h >= 21 || h < 6) s.care.night = (s.care.night || 0) + n * .5;
+}
+function pickChild(s){
+  const c = s.care, g = k => c[k] || 0;
+  const play = g('throw') * 2 + g('ball') + g('game') * 3 + g('walk') + g('trick') * 1.5;
+  const cu = g('pet') * .35 + g('feed') * 2 + g('clean') + g('tickle') * .3 + g('sweet') * 2 + g('healthy') * 2;
+  return play > cu ? 'saltello' : 'morbidello';
+}
+function formScores(s){
+  const c = s.care, g = k => c[k] || 0;
+  if (g('neglect') > 15 && s.trust < 45) return {[g('night') > 8 ? 'ombra' : 'muschio']: 1};
+  if (s.childForm === 'saltello') return {stellino: g('game') * 2 + 1, razzo: g('throw') * 1.5, pallino: g('ball') * .9, esploratore: g('walk') * 2, saltimbanco: g('trick') * 1.4};
+  return {nuvola: g('pet') * .3 + 1, budino: g('sweet') * 3, bocciolo: g('healthy') * 2.5 + g('clean') * .8, gelatina: g('tickle') * .35, lumino: g('night') * .35};
+}
+function pickForm(s){ const sc = formScores(s); return Object.keys(sc).reduce((a, b) => sc[b] > sc[a] ? b : a); }
+function trendOf(s){
+  if (s.stage === 'baby') return pickChild(s) === 'saltello' ? 'giocherellona' : 'coccolona';
+  if (s.stage === 'child') return FORMS[pickForm(s)].trend;
+  return '';
 }
 
 function simulate(s, to){
@@ -578,24 +691,25 @@ function simulate(s, to){
   if (s.stage === 'egg'){
     if (to < s.hatchAt){ s.last = to; return false; }
     s.stage = 'baby'; s.hatchedAt = s.hatchAt; s.last = s.hatchAt;
-    log(s, s.hatchAt, `Crack! L'uovo si è schiuso: benvenuto ${s.name}!`);
-    giveSticker(s, 'schiusa', s.hatchAt); ev = true;
-    hatchFx = 1;
+    log(s, s.hatchAt, `Crack! L'uovo si è schiuso: benvenuto ${nm(s)}!`);
+    giveSticker(s, 'schiusa', s.hatchAt); seeForm('baby', s); ev = true;
+    if (state && s.id === state.id) hatchFx = 1;
   }
   let t = s.last;
   if (to - t > 14*24*HOUR) t = to - 14*24*HOUR;
+  const dk = s.stage === 'adult' && s.form === 'muschio' ? .65 : 1, hk = s.stage === 'adult' && s.form === 'bocciolo' ? .6 : 1;
   while (t < to){
     const ms = Math.min(10*MIN, to - t), h = ms / HOUR; t += ms;
     const away = s.walk && !s.walk.back;
     if (away){
-      s.hunger -= 6*h; s.thirst -= 9*h; s.fun += 4*h; s.energy -= 8*h; s.hygiene -= 4*h;
+      s.hunger -= 6*h*dk; s.thirst -= 9*h*dk; s.fun += 4*h; s.energy -= 8*h; s.hygiene -= 4*h*hk;
       if (t >= s.walk.end){ s.walk.back = true; ev = true; }
     } else {
-      const sl = s.sleeping, k = sl ? .45 : 1;
+      const sl = s.sleeping, k = (sl ? .45 : 1) * dk;
       s.hunger -= 6*h*k; s.thirst -= 8*h*k;
-      s.fun -= (s.sick ? 9 : 5.5) * h * (sl ? .3 : 1);
+      s.fun -= (s.sick ? 9 : 5.5) * h * (sl ? .3 : 1) * dk;
       s.energy += sl ? 14*h : -4.5*h;
-      s.hygiene -= (3.5 + 4*s.poops + 1.5*s.messes.length) * h;
+      s.hygiene -= (3.5 + 4*s.poops + 1.5*s.messes.length) * h * hk;
       s.poopClock += h * (sl ? .4 : 1);
       if (s.poopClock >= 3.5){ s.poopClock -= 3.5; if (s.poops < 3){ s.poops++; ev = true; } }
     }
@@ -605,32 +719,133 @@ function simulate(s, to){
     s.health = Math.max(5, clamp(s.health));
     const risky = s.hygiene < 25 || s.poops >= 3 || (s.hunger < 15 && s.thirst < 15) || s.health < 30;
     s.riskClock = risky ? s.riskClock + h : Math.max(0, s.riskClock - h);
-    if (!s.sick && s.riskClock >= 1){ s.sick = true; s.riskClock = 0; log(s, t, `${s.name} si è ammalato. Serve una medicina.`); ev = true; }
+    if (!s.sick && s.riskClock >= 1){ s.sick = true; s.riskClock = 0; s.care.neglect = (s.care.neglect || 0) + 4; log(s, t, `${nm(s)} si è ammalato. Serve una medicina.`); ev = true; }
     if (c < 30) s.trust -= 4*h; else if (c < 45) s.trust -= 1.5*h; else if (c > 65) s.trust += .6*h;
+    if (c < 35 && s.stage !== 'adult') s.care.neglect = (s.care.neglect || 0) + 3*h;
     s.trust = clamp(s.trust);
-    if (!s.distrust && s.trust < 35){ s.distrust = true; log(s, t, `${s.name} si sente trascurato e non si fida più tanto.`); ev = true; }
-    if (s.distrust && s.trust >= 50){ s.distrust = false; log(s, t, `${s.name} si fida di nuovo di te.`); ev = true; }
+    if (!s.distrust && s.trust < 35){ s.distrust = true; log(s, t, `${nm(s)} si sente trascurato e non si fida più tanto.`); ev = true; }
+    if (s.distrust && s.trust >= 50){ s.distrust = false; log(s, t, `${nm(s)} si fida di nuovo di te.`); ev = true; }
     if (!away){
-      if (!s.sleeping && s.energy < 12){ s.sleeping = true; log(s, t, `${s.name} è crollato dal sonno.`); ev = true; }
-      if (s.sleeping && s.energy >= 100){ s.sleeping = false; log(s, t, `${s.name} si è svegliato riposato.`); ev = true; }
+      if (!s.sleeping && s.energy < 12){ s.sleeping = true; log(s, t, `${nm(s)} è crollato dal sonno.`); ev = true; }
+      if (s.sleeping && s.energy >= 100){ s.sleeping = false; log(s, t, `${nm(s)} si è svegliato riposato.`); ev = true; }
     }
-    if (s.stage !== 'adult'){ s.careSum += c*h; s.funSum += s.fun*h; s.trustSum += s.trust*h; s.careH += h; }
     const age = (t - s.hatchedAt) / HOUR;
-    if (s.stage === 'baby' && age >= 6){ s.stage = 'child'; log(s, t, `${s.name} è cresciuto: ora è un piccolo blob!`); ev = true; }
-    if (s.stage === 'child' && age >= 48){
-      s.stage = 'adult'; s.branch = pickBranch(s); const b = BRANCHES[s.branch];
-      log(s, t, `${s.name} si è evoluto in ${b.name}: ${b.desc}.`); giveSticker(s, 'evo_' + s.branch, t); ev = true;
+    if (s.stage === 'baby' && age >= 2){
+      s.stage = 'child'; s.childForm = pickChild(s); seeForm(s.childForm, s);
+      log(s, t, `${nm(s)} è cresciuto: è diventato un ${FORMS[s.childForm].n}!`); ev = true; evoQueue.push(s.id);
+    }
+    if (s.stage === 'child' && age >= 12){
+      s.stage = 'adult'; s.form = pickForm(s); s.adultAt = t; const F = FORMS[s.form];
+      seeForm(s.form, s);
+      if (STICKERS['evo_' + s.form]) giveSticker(s, 'evo_' + s.form, t);
+      log(s, t, `${nm(s)} si è evoluto in ${F.n}${s.shiny ? ' dorato' : ''}! ${F.ab}`); ev = true; evoQueue.push(s.id);
     }
   }
   s.last = to;
   return ev;
+}
+let evoQueue = [], eggNotice = null;
+
+/* ================= casa, stanze e valle ================= */
+function setRoom(i){
+  if (!world) return;
+  activeRoom = lim(i, 0, world.rooms.length - 1); world.activeRoom = activeRoom;
+  const r = world.rooms[activeRoom], b = r.blob && blobById(r.blob);
+  state = b ? view(b) : null;
+  if (typeof resetScene === 'function') resetScene();
+  trayKey = ''; diaryKey = ''; render(true);
+}
+function canLay(b, now){ return b.stage === 'adult' && b.adultAt && now - b.adultAt > 3*HOUR && b.trust >= 50 && now - (b.lastEgg || 0) > 20*HOUR && !b.walk && !b.sleeping && b.health > 50; }
+function layEgg(p){
+  const now = Date.now(); p.lastEgg = now;
+  const egg = newBlob('', p); world.blobs.push(egg);
+  let i = world.rooms.findIndex(r => !r.blob);
+  if (i < 0 && world.rooms.length < 2){ world.rooms.push(newRoom(world.rooms.length)); i = world.rooms.length - 1; }
+  if (i >= 0) world.rooms[i].blob = egg.id; else world.valley.push(egg.id);
+  log(view(p), now, `${p.name} ha deposto un uovo! ${i >= 0 ? 'È nella stanza ' + world.rooms[i].name + '.' : 'In casa non c\'era posto: è al sicuro nella Valle dei Blob.'}`);
+  eggNotice = {room: i, parent: p.name, shiny: egg.shiny};
+  save();
+}
+function freeRoom(){ return world.rooms.findIndex(r => !r.blob); }
+function toValley(i){
+  const r = world.rooms[i], b = blobById(r.blob); if (!b) return;
+  if (b.walk){ toast(`${nm(b)} è a passeggio: aspetta che torni.`); return; }
+  r.blob = null; world.valley.push(b.id); b.wish = null;
+  log(view(b), Date.now(), `${nm(b)} è andato a vivere nella Valle dei Blob.`);
+  if (i === activeRoom) setRoom(i);
+  save(); openHouse(); toast(`${nm(b)} è partito per la Valle`);
+}
+function fromValley(id){
+  const i = freeRoom(); if (i < 0){ toast('Serve una stanza libera: compra una stanza o manda qualcuno nella Valle.'); return; }
+  const b = blobById(id); world.valley = world.valley.filter(x => x !== id);
+  world.rooms[i].blob = id; b.last = Date.now(); if (b.stage === 'egg') b.hatchAt = Math.max(b.hatchAt, Date.now() + 2*MIN);
+  b.nextWishAt = Date.now() + 3*MIN;
+  log(view(b), Date.now(), `${nm(b)} è tornato a casa dalla Valle.`);
+  save(); closeSheet(); setRoom(i); say(`Bentornato ${nm(b)}!`);
+}
+function buyRoom(){
+  const n = world.rooms.length; if (n >= 4) return;
+  const p = ROOM_PRICES[n];
+  if (world.coins < p){ toast(`Ti mancano ${p - world.coins} stelline.`); return; }
+  world.coins -= p; world.rooms.push(newRoom(n)); sfx.coin(); save(); render(true); openHouse(); toast(`Nuova stanza: ${world.rooms[n].name}!`);
+}
+function setTheme(i, th){
+  const r = world.rooms[i]; if (r.theme === th) return;
+  if (world.coins < 10){ toast('Cambiare carta da parati costa 10 stelline.'); return; }
+  world.coins -= 10; r.theme = th; sfx.coin(); save(); render(true); openHouse();
+}
+function openHouse(){
+  const rows = world.rooms.map((r, i) => {
+    const b = r.blob && blobById(r.blob);
+    return `<div class="rowi${i === activeRoom ? ' hl' : ''}"><div class="em">${b ? blobEmoji(b) : '🚪'}</div><div><b>${esc(r.name)}</b><small>${b ? `${esc(nm(b))} · ${b.stage === 'egg' ? 'uovo' : FORMS[kindOf(b)].n}${b.shiny && b.stage !== 'egg' ? ' dorato' : ''}` : 'Stanza libera'}</small></div>
+      <span style="display:flex;gap:6px">${b ? `<button class="btn small ghost" data-valley="${i}" type="button">Valle</button>` : ''}<button class="btn small" data-go="${i}" type="button">Vai</button></span></div>`;
+  }).join('');
+  const n = world.rooms.length;
+  const buy = n < 4 ? `<div class="rowi"><div class="em">➕</div><div><b>Nuova stanza</b><small>Per far crescere più blob insieme</small></div><button class="btn small${world.coins < ROOM_PRICES[n] ? ' poor' : ''}" data-buyroom type="button">${ROOM_PRICES[n] ? STAR + ROOM_PRICES[n] : 'Gratis'}</button></div>` : '';
+  const cur = world.rooms[activeRoom];
+  const sw = Object.keys(THEMES).map(k => `<button class="sw" data-th="${k}" type="button" aria-pressed="${cur.theme === k}" aria-label="${THEMES[k].n}" style="background:hsl(${THEMES[k].h},80%,82%)"></button>`).join('');
+  const vb = world.valley.map(id => blobById(id)).filter(Boolean);
+  const valley = vb.length ? vb.map(b => `<div class="rowi"><div class="em">${blobEmoji(b)}</div><div><b>${esc(nm(b))}</b><small>${b.stage === 'egg' ? 'Uovo' : FORMS[kindOf(b)].n}${b.shiny && b.stage !== 'egg' ? ' dorato' : ''} · ${b.gen}ª generazione</small></div><button class="btn small" data-back="${b.id}" type="button">Riporta</button></div>`).join('')
+    : '<p class="shopnote">Nella Valle non c\'è ancora nessuno. Quando la casa è piena, qui i blob riposano senza bisogni.</p>';
+  openSheet('La tua casa', `<div class="rows">${rows}${buy}</div>
+    <p class="subhead">Carta da parati: ${esc(cur.name)}</p><p class="shopnote">10 stelline per cambiarla.</p><div class="swatches">${sw}</div>
+    <p class="subhead">🏞️ Valle dei Blob</p><div class="rows">${valley}</div>`, body => body.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.go){ closeSheet(); setRoom(+b.dataset.go); }
+    else if (b.dataset.valley) toValley(+b.dataset.valley);
+    else if (b.dataset.back) fromValley(b.dataset.back);
+    else if (b.hasAttribute('data-buyroom')) buyRoom();
+    else if (b.dataset.th) setTheme(activeRoom, b.dataset.th);
+  }));
+}
+function renderRooms(){
+  const bar = $('roomBar'); bar.hidden = !world;
+  if (!world) return;
+  bar.innerHTML = world.rooms.map((r, i) => {
+    const b = r.blob && blobById(r.blob);
+    const alert = b && b.stage !== 'egg' && i !== activeRoom && (b.sick || b.wish || r.poops || core(b) < 40 || (b.walk && b.walk.back));
+    return `<button class="room${alert ? ' alert' : ''}" data-r="${i}" type="button" aria-pressed="${i === activeRoom}"><span class="e">${b ? blobEmoji(b) : '🚪'}</span>${esc(b ? (b.name || 'Uovo') : r.name)}</button>`;
+  }).join('') + `<button class="room house" data-house type="button"><span class="e">🏡</span>Casa${world.valley.length ? ' · ' + world.valley.length + ' in Valle' : ''}</button>`;
+}
+document.getElementById('roomBar').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.hasAttribute('data-house')) openHouse(); else setRoom(+b.dataset.r);
+});
+function showEvo(id){
+  const b = blobById(id); if (!b) return;
+  const k = kindOf(b), F = FORMS[k];
+  if (state && state.id === id){ burst('confetti', 40); sfx.level(); }
+  openSheet(b.stage === 'adult' ? `${nm(b)} si è evoluto!` : `${nm(b)} è cresciuto!`, `<div class="loot"><div class="big-em">${F.e}</div>
+    <p style="text-align:center"><b>${F.n}${b.shiny ? ' dorato ✨' : ''}</b></p><p class="story">${F.ab}</p>
+    ${b.stage === 'child' ? '<p class="shopnote">Da qui a 10 ore diventerà adulto. Come giochi con lui decide in cosa si trasformerà: guarda la sua tendenza in alto.</p>' : '<p class="shopnote">Lo trovi nell\'Enciclopedia dei blob. Se lo tratti bene, tra qualche ora potrebbe deporre un uovo.</p>'}</div>
+    <div class="sheet-actions"><button class="btn" data-close type="button">Che bello!</button></div>`);
 }
 
 /* ================= salvataggio ================= */
 let db = null, uid = null, writing = false, again = null, saveT = 0;
 function readLocal(){ try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } }
 function save(){
-  const rec = {state: state ? JSON.parse(JSON.stringify(state)) : null, savedAt: Date.now()};
+  const rec = {state: world ? JSON.parse(JSON.stringify(world)) : null, savedAt: Date.now()};
   try { localStorage.setItem(KEY, JSON.stringify(rec)); } catch {}
   pushRemote(rec);
 }
@@ -645,13 +860,14 @@ async function pushRemote(rec){
 }
 function adopt(rec){
   if (!rec) return;
-  state = rec.state ? migrate(rec.state) : null;
-  if (state){
-    const away = Date.now() - state.last;
-    simulate(state, Date.now());
-    if (away > 20*MIN && state.stage !== 'egg' && !state.walk && !state.sleeping) welcome = true;
-  }
-  render(true);
+  world = rec.state ? migrateWorld(rec.state) : null;
+  if (world){
+    const now = Date.now(), r = world.rooms[world.activeRoom || 0], ab = r && r.blob && blobById(r.blob);
+    const away = ab ? now - ab.last : 0;
+    for (const b of houseBlobs()) simulate(view(b), now);
+    setRoom(world.activeRoom || 0);
+    if (state && away > 20*MIN && state.stage !== 'egg' && !state.walk && !state.sleeping) welcome = true;
+  } else { state = null; render(true); }
 }
 async function initRemote(){
   if (!window.claude || !window.claude.use) return;
@@ -681,7 +897,8 @@ function fmtDur(ms){
 function dayKey(t){ const d = new Date(t); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
 function stageName(s){
   if (!s) return 'Uovo';
-  return {egg:'Uovo', baby:'Cucciolo', child:'Piccolo', adult:'Adulto'}[s.stage] + (s.branch ? ` · ${BRANCHES[s.branch].name}` : '');
+  if (s.stage === 'egg') return 'Uovo';
+  return FORMS[kindOf(s)].n + (s.shiny ? ' dorato ✨' : '') + (s.gen > 1 ? ` · ${s.gen}ª gen.` : '');
 }
 function mood(s){
   if (!s || s.stage === 'egg') return {k:'egg', t:'nel guscio'};
@@ -714,7 +931,8 @@ function toast(msg, ms = 2400){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
 }
 function addCoins(n){
-  state.coins += n;
+  if (!world) return;
+  world.coins += n;
   const c = $('coins'); c.classList.add('pop'); setTimeout(() => c.classList.remove('pop'), 220);
 }
 let audio = null;
@@ -746,15 +964,15 @@ const sfx = {
 
 /* ================= amicizia ================= */
 let xpBudget = 20, lastBudget = Date.now();
-function gainXp(n){
-  const s = state; if (!s || s.stage === 'egg' || n <= 0) return;
+function gainXp(n, sv){
+  const s = sv || state; if (!s || s.stage === 'egg' || n <= 0) return;
   s.xp += n;
   while (s.level < LEVELS.length && s.xp >= LEVELS[s.level].xp){
     s.level++;
     const L = LEVELS[s.level - 1];
     log(s, Date.now(), `Amicizia livello ${s.level}! ${L.t}.`);
     if (L.perk === 'aura') giveSticker(s, 'migliori');
-    levelUpQueue.push(s.level);
+    if (!sv || (state && sv.id === state.id)) levelUpQueue.push(s.level);
   }
   saveSoon();
 }
@@ -881,34 +1099,53 @@ function idleLine(){
   return pick(L);
 }
 function tick(){
-  const s = state; if (!s) return;
+  if (!world) return;
   const now = Date.now();
-  let ch = simulate(s, now);
-  if (s.stage === 'egg'){ render(); return; }
-  ensureDay(s);
+  let ch = false;
+  const hb = houseBlobs();
+  for (const b of hb) if (simulate(view(b), now)) ch = true;
+  for (const b of hb) if (canLay(b, now)){ layEgg(b); ch = true; }
+  const s = state;
+  const anyone = hb.find(b => b.stage !== 'egg');
+  if (anyone) ensureDay(s && s.stage !== 'egg' ? s : view(anyone));
   const free = $('sheet').hidden && $('gameOverlay').hidden && !ptr.down && !dragFood;
+  if (free && evoQueue.length){ showEvo(evoQueue.shift()); render(true); return; }
+  if (free && eggNotice){
+    const n = eggNotice; eggNotice = null; sfx.level(); render(true);
+    openSheet('Un uovo!', `<div class="loot"><div class="big-em">🥚</div>
+      <p style="text-align:center"><b>${esc(n.parent)} ha deposto un uovo${n.shiny ? ' che luccica' : ''}!</b></p>
+      <p class="story">${n.room >= 0 ? `L'ho messo nella stanza ${esc(world.rooms[n.room].name)}. Si schiude tra pochi minuti: vai a scaldarlo e a dargli un nome.` : 'In casa non c\'era una stanza libera, così è al sicuro nella Valle dei Blob. Compra una stanza o fai spazio per riportarlo a casa.'}</p></div>
+      <div class="sheet-actions">${n.room >= 0 ? `<button class="btn" id="goEgg" type="button">Vai a vederlo</button>` : `<button class="btn" id="goHouse" type="button">Apri la casa</button>`}</div>`, b => {
+        const g = b.querySelector('#goEgg'); if (g) g.onclick = () => { closeSheet(); setRoom(n.room); };
+        const h = b.querySelector('#goHouse'); if (h) h.onclick = () => openHouse();
+      });
+    return;
+  }
   if (free && levelUpQueue.length){ showLevelUp(levelUpQueue.shift()); return; }
-  if (s.walk && s.walk.back && free){ walkReturn(); return; }
-  if (s.daily.last !== dayKey(now) && free){ dailyGift(); return; }
-  if (s.wish && now > s.wish.exp){
-    log(s, now, `${s.name} ci è rimasto male: nessuno ha esaudito il suo desiderio.`);
-    s.trust = clamp(s.trust - 2); s.wish = null; s.nextWishAt = now + rnd(10, 25)*MIN; ch = true;
+  const back = hb.find(b => b.walk && b.walk.back);
+  if (back && free){ walkReturn(view(back)); return; }
+  if (anyone && world.daily.last !== dayKey(now) && free){ dailyGift(); return; }
+  if (s && s.stage !== 'egg'){
+    if (s.wish && now > s.wish.exp){
+      log(s, now, `${s.name} ci è rimasto male: nessuno ha esaudito il suo desiderio.`);
+      s.trust = clamp(s.trust - 2); s.wish = null; s.nextWishAt = now + rnd(10, 25)*MIN; ch = true;
+    }
+    if (!s.wish && now >= s.nextWishAt && !s.walk && !s.sleeping && s.name){
+      s.wish = makeWish(s); log(s, now, `${s.name} ${s.wish.text}.`); ch = true;
+      say(`${s.wish.e} ${s.name} ${s.wish.text}!`, 3200);
+    }
+    if (perk('gifts') && !s.gift && now - s.lastGift > 3*HOUR && !s.walk){ s.gift = {x: rf(.2, .8)}; s.lastGift = now; ch = true; }
   }
-  if (!s.wish && now >= s.nextWishAt && !s.walk && !s.sleeping){
-    s.wish = makeWish(s); log(s, now, `${s.name} ${s.wish.text}.`); ch = true;
-    say(`${s.wish.e} ${s.name} ${s.wish.text}!`, 3200);
-  }
-  if (perk('gifts') && !s.gift && now - s.lastGift > 3*HOUR && !s.walk){ s.gift = {x: rf(.2, .8)}; s.lastGift = now; ch = true; }
   if (ch) saveSoon();
   render();
 }
 function dailyGift(){
-  const s = state, now = Date.now(), y = dayKey(now - 24*HOUR);
+  const s = state && state.stage !== 'egg' ? state : view(houseBlobs().find(b => b.stage !== 'egg')), now = Date.now(), y = dayKey(now - 24*HOUR);
   const streak = s.daily.last === y ? s.daily.streak + 1 : 1;
   const coins = 8 + Math.min(streak, 7) * 2;
   let food = null; if (Math.random() < .5){ food = pick(TASTY); s.inv[food] = (s.inv[food] || 0) + 1; }
   s.daily = {last: dayKey(now), streak};
-  addCoins(coins); gainXp(5);
+  addCoins(coins); gainXp(5, s);
   const sevenNew = streak >= 7 && giveSticker(s, 'settimana');
   log(s, now, `Regalo del giorno: +${coins} stelline${food ? ' e ' + FOODS[food].e + ' ' + FOODS[food].n.toLowerCase() : ''}.`);
   save(); render(true);
@@ -923,21 +1160,22 @@ function dailyGift(){
     </div></div>
     <div class="sheet-actions"><button class="btn" data-close type="button">Grazie!</button></div>`);
 }
-function walkReturn(){
-  const s = state, w = s.walk, P = PLACES[w.place], fav = s.traits.favPlace === w.place, now = Date.now();
+function walkReturn(sv){
+  const s = sv || state, w = s.walk, P = PLACES[w.place], fav = s.traits.favPlace === w.place, now = Date.now();
+  const expl = s.stage === 'adult' && s.form === 'esploratore';
   let coins = Math.round(rnd(P.coins[0], P.coins[1]) * (fav ? 1.5 : 1));
   let food = null; if (Math.random() < .4){ food = pick(TASTY); s.inv[food] = (s.inv[food] || 0) + 1; }
   let stk = null, dup = false;
-  if (Math.random() < P.chance + (fav ? .25 : 0)){
+  if (Math.random() < P.chance + (fav ? .25 : 0) + (expl ? .2 : 0)){
     stk = pick(P.stickers);
     if (s.stickers[stk]){ dup = true; coins += 5; } else giveSticker(s, stk, now);
   }
   const story = pick(P.stories)(s.name);
   const newFav = fav && reveal(s, 'favPlace');
   s.fun = clamp(s.fun + (fav ? 15 : 6)); s.trust = clamp(s.trust + 2); s.walks++;
-  addCoins(coins); s.walk = null; gainXp(6);
+  addCoins(coins); s.walk = null; gainXp(6, s);
   log(s, now, story);
-  pet.x = -R; pet.beh = {type:'enter', until: now + 6000};
+  if (state && state.id === s.id){ pet.x = -R; pet.beh = {type:'enter', until: now + 6000}; }
   save(); render(true);
   openSheet(`${s.name} è tornato!`, `<div class="loot">
     <p class="story">${esc(story)}</p>
@@ -952,8 +1190,10 @@ function walkReturn(){
 
 /* ================= interfaccia ================= */
 function openSheet(title, html, onMount){
-  $('sheetTitle').textContent = title; $('sheetBody').innerHTML = html; $('sheet').hidden = false;
-  if (onMount) onMount($('sheetBody'));
+  const old = $('sheetBody'), body = old.cloneNode(false);
+  old.replaceWith(body);
+  $('sheetTitle').textContent = title; body.innerHTML = html; $('sheet').hidden = false;
+  if (onMount) onMount(body);
 }
 function closeSheet(){ $('sheet').hidden = true; }
 $('sheetClose').addEventListener('click', closeSheet);
@@ -976,14 +1216,24 @@ const HINTS = {
 let diaryKey = '', trayKey = '';
 function render(full){
   const s = state, egg = !s || s.stage === 'egg', now = Date.now();
-  $('namer').hidden = !!s;
-  $('petName').textContent = s ? s.name : 'Un uovo misterioso';
-  $('stageChip').textContent = stageName(s);
-  $('coinVal').textContent = s ? s.coins : 0;
-  if (!s) $('ageText').textContent = 'In attesa di un nome';
-  else if (s.stage === 'egg') $('ageText').textContent = `Si schiude tra ${Math.max(0, Math.ceil((s.hatchAt - now) / 1000))} s`;
-  else if (s.stage === 'adult') $('ageText').textContent = `Età ${fmtDur(now - s.hatchedAt)}`;
-  else $('ageText').textContent = `${s.stage === 'baby' ? 'Cresce' : 'Si evolve'} tra ${fmtDur(s.hatchedAt + (s.stage === 'baby' ? 6 : 48)*HOUR - now)}`;
+  const emptyRoom = !!world && !s;
+  $('namer').hidden = emptyRoom || !!(s && s.name);
+  if (s && !s.name){
+    $('namerLabel').textContent = s.parentName ? `Il piccolo di ${s.parentName}: come lo chiami?` : 'Come chiamerai il tuo blob?';
+    $('namerText').textContent = s.stage === 'egg' ? 'Accarezza l\'uovo per scaldarlo: si schiude prima.' : 'È appena nato e aspetta un nome!';
+    $('importLink').hidden = true;
+  } else { $('importLink').hidden = !!world; }
+  renderRooms();
+  $('petName').textContent = s ? (s.name || (s.stage === 'egg' ? 'Un uovo nuovo' : 'Senza nome')) : world ? world.rooms[activeRoom].name : 'Un uovo misterioso';
+  $('stageChip').textContent = emptyRoom ? 'Stanza libera' : stageName(s);
+  $('coinVal').textContent = world ? world.coins : 0;
+  if (emptyRoom) $('ageText').textContent = 'Nessuno abita qui';
+  else if (!s) $('ageText').textContent = 'In attesa di un nome';
+  else if (s.stage === 'egg') $('ageText').textContent = `Si schiude tra ${fmtDur(s.hatchAt - now)}`;
+  else if (s.stage === 'adult') $('ageText').textContent = `${s.gen}ª generazione`;
+  else $('ageText').textContent = `${s.stage === 'baby' ? 'Cresce' : 'Si evolve'} tra ${fmtDur(s.hatchedAt + (s.stage === 'baby' ? 2 : 12)*HOUR - now)} · tendenza ${trendOf(s)}`;
+  const F = s && s.stage === 'adult' ? FORMS[s.form] : null;
+  $('abilityLine').hidden = !F; if (F) $('abilityLine').textContent = `${F.e} Abilità di ${F.n}: ${F.ab}`;
   $('dotAlbum').hidden = !unseenStickers || tab === 'album';
   $('dotCasa').hidden = !(s && s.wish) || tab === 'casa';
   $('moodText').textContent = mood(s).t;
@@ -992,7 +1242,11 @@ function render(full){
   $('hintText').textContent = !s ? '' : egg ? 'Accarezza l\'uovo per scaldarlo' : s.walk ? 'È fuori casa' : s.sleeping ? 'Dorme: accarezzalo piano' : HINTS[tool];
 
   const aw = $('away');
-  if (s && s.walk){
+  if (emptyRoom){
+    aw.hidden = false;
+    aw.innerHTML = `Questa stanza è libera.<small>Qui può schiudersi un uovo nuovo, o puoi riportare un blob dalla Valle.</small><button class="btn small" id="awHouse" type="button" style="margin-top:8px">Apri la casa</button>`;
+    $('awHouse').onclick = openHouse;
+  } else if (s && s.walk){
     const P = PLACES[s.walk.place];
     aw.hidden = false;
     aw.innerHTML = `${esc(s.name)} è ${P.dove} ${P.e}<small>${s.walk.back ? 'Sta rientrando…' : 'Torna tra ' + fmtDur(s.walk.end - now)}</small>`;
@@ -1120,7 +1374,7 @@ document.querySelector('.seg').addEventListener('click', e => { const b = e.targ
 $('shopList').addEventListener('click', e => {
   const b = e.target.closest('button'), it = e.target.closest('.item'); if (!b || !it || !it.dataset.id) return;
   const s = state;
-  if (!s){ toast('Prima dai un nome al tuo uovo.'); return; }
+  if (!s){ toast(world ? 'Vai in una stanza abitata per comprare.' : 'Prima dai un nome al tuo uovo.'); return; }
   const id = it.dataset.id;
   if (b.hasAttribute('data-buy')){
     const p = (shopSec === 'food' ? FOODS : shopSec === 'hats' ? HATS : FURN)[id].price;
@@ -1132,14 +1386,20 @@ $('shopList').addEventListener('click', e => {
   } else if (b.hasAttribute('data-wear')){
     if (s.hat === id) s.hat = null; else { s.hat = id; fulfill('hat', id); }
   } else if (b.hasAttribute('data-place')){
-    s.furnOn = s.furnOn.includes(id) ? s.furnOn.filter(x => x !== id) : s.furnOn.concat(id);
+    if (s.furnOn.includes(id)) s.furnOn = s.furnOn.filter(x => x !== id);
+    else { world.rooms.forEach(r => { r.furnOn = r.furnOn.filter(x => x !== id); }); s.furnOn = s.furnOn.concat(id); }
   }
   save(); render(true);
 });
 
 /* ================= album ================= */
+const DEX_ORDER = ['baby','morbidello','saltello','nuvola','budino','bocciolo','gelatina','lumino','stellino','razzo','pallino','esploratore','saltimbanco','muschio','ombra'];
 function renderAlbum(){
   const s = state;
+  const dx = world ? world.dex : {};
+  $('dexCount').textContent = `${DEX_ORDER.filter(k => dx[k]).length} / ${DEX_ORDER.length}`;
+  $('dex').innerHTML = DEX_ORDER.map(k => { const F = FORMS[k], got = dx[k];
+    return `<button class="stk${got ? '' : ' miss'}" data-k="${k}" type="button" style="font:inherit;color:inherit;cursor:pointer"><span class="em">${F.e}</span><small>${got ? F.n + (got.shiny ? ' ✨' : '') : (F.hint || '?')}</small></button>`; }).join('');
   $('knowTitle').textContent = s ? `I gusti di ${s.name}` : 'I suoi gusti';
   const T = s ? s.traits : {}, K = s ? s.known : {};
   const tr = [
@@ -1160,6 +1420,17 @@ function renderAlbum(){
     return `<div class="stk${got ? '' : ' miss'}" title="${got ? S.n : S.how}"><span class="em">${S.e}</span><small>${got ? S.n : S.how}</small></div>`;
   }).join('');
 }
+
+$('dex').addEventListener('click', e => {
+  const b = e.target.closest('[data-k]'); if (!b) return;
+  const k = b.dataset.k, F = FORMS[k], got = world && world.dex[k];
+  const how = k === 'baby' ? 'Ogni blob nasce così.' : F.child ? `Da cucciolo diventa ${F.n} se ${k === 'saltello' ? 'giochi tanto con lui: lanci, palla, minigiochi, passeggiate' : 'te ne prendi cura: carezze, pappa a mano, pulizia'}.`
+    : F.secret ? 'Una forma segreta. Si dice che nasca quando un piccolo viene trascurato…' : `Nasce da un ${FORMS[F.fam].n} cresciuto con: ${F.hint.toLowerCase()}.`;
+  openSheet(got ? F.n : '???', `<div class="loot"><div class="big-em"${got ? '' : ' style="filter:brightness(0);opacity:.2"'}>${F.e}</div>
+    ${got ? `<p class="story">${F.ab || 'Appena nato, tutto da scoprire.'}</p>` : ''}<p class="shopnote">${how}</p>
+    ${got && got.shiny ? '<p class="shopnote">✨ Hai trovato anche la versione dorata!</p>' : got ? '<p class="shopnote">Esiste anche una rara versione dorata.</p>' : ''}</div>
+    <div class="sheet-actions"><button class="btn" data-close type="button">Chiudi</button></div>`);
+});
 
 /* ================= azioni dei pulsanti ================= */
 function ready(){
@@ -1217,7 +1488,7 @@ function openWalk(){
   const rows = Object.keys(PLACES).map(id => {
     const P = PLACES[id], wished = w && w.type === 'walk' && w.target === id;
     const tag = wished ? '<span class="tag">Desiderio</span>' : s.known.favPlace && s.traits.favPlace === id ? '<span class="tag">Preferito</span>' : '';
-    return `<div class="rowi${wished ? ' hl' : ''}"><div class="em">${P.e}</div><div><b>${P.n}${tag}</b><small>${P.min} min · energia −${P.energy} · più lontano, più tesori</small></div><button class="btn small" data-place="${id}" type="button">Parti</button></div>`;
+    return `<div class="rowi${wished ? ' hl' : ''}"><div class="em">${P.e}</div><div><b>${P.n}${tag}</b><small>${Math.round(P.min * (isForm('esploratore') ? .6 : 1))} min · energia −${P.energy} · più lontano, più tesori</small></div><button class="btn small" data-place="${id}" type="button">Parti</button></div>`;
   }).join('');
   openSheet('Dove andiamo?', `<div class="rows">${rows}</div><p class="shopnote" style="margin-top:12px">Mentre è via i bisogni calano lo stesso. Al ritorno porta stelline, a volte cibo e figurine.</p>`, b => b.addEventListener('click', e => {
     const t = e.target.closest('[data-place]'); if (!t) return;
@@ -1225,10 +1496,11 @@ function openWalk(){
     if (s.sick){ toast(`${s.name} è malato: prima la medicina.`); return; }
     if (s.energy < P.energy + 5){ toast(`${s.name} è troppo stanco per andare ${P.dove}.`); return; }
     const now = Date.now();
-    s.walk = {place:id, start:now, end: now + P.min*MIN};
+    const mins = Math.round(P.min * (isForm('esploratore') ? .6 : 1));
+    s.walk = {place:id, start:now, end: now + mins*MIN};
     log(s, now, `${s.name} è partito per una passeggiata ${P.dove}.`);
-    closeSheet(); fulfill('walk', id); mission('walk'); save(); render(true);
-    say(`Ciao ciao! Torna tra ${P.min} minuti.`);
+    closeSheet(); fulfill('walk', id); mission('walk'); note('walk', 4); save(); render(true);
+    say(`Ciao ciao! Torna tra ${mins} minuti.`);
   }));
 }
 $('wishBtn').addEventListener('click', () => {
@@ -1249,16 +1521,22 @@ $('wishBtn').addEventListener('click', () => {
 });
 $('namer').addEventListener('submit', e => {
   e.preventDefault();
-  const n = $('nameInput').value.trim() || 'Mochi';
-  state = newState(n.slice(0, 14)); save(); render(true); say(`Ciao ${state.name}! Accarezzalo per scaldarlo…`);
+  const n = ($('nameInput').value.trim() || pick(['Mochi','Bloppo','Pallotto','Gommina','Budy','Fiocco'])).slice(0, 14);
+  $('nameInput').value = '';
+  if (!world){
+    world = newWorld(); const b = newBlob(n); world.blobs.push(b); world.rooms[0].blob = b.id;
+    setRoom(0); save(); say(`Ciao ${n}! Accarezzalo per scaldarlo…`);
+  } else if (state && !state.name){
+    state.name = n; log(state, Date.now(), `Si chiama ${n}!`); save(); render(true); say(`Ciao ${n}!`);
+  }
 });
 function askReset(){
   const w = $('resetWrap'), n = state ? state.name : 'il blob';
   w.innerHTML = '<span class="confirm"><span></span><button class="btn small" id="rsYes" type="button">Sì, ricomincia</button><button class="btn small ghost" id="rsNo" type="button">Annulla</button></span>';
-  w.querySelector('.confirm span').textContent = `Salutare ${n} per sempre?`;
+  w.querySelector('.confirm span').textContent = `Cancellare tutta la casa e tutti i blob per sempre?`;
   const back = () => { w.innerHTML = '<button class="linkbtn" id="resetBtn" type="button">Ricomincia da capo</button>'; $('resetBtn').addEventListener('click', askReset); };
   $('rsNo').onclick = back;
-  $('rsYes').onclick = () => { state = null; particles = []; floorFood = []; ev = null; save(); render(true); back(); $('nameInput').value = ''; window.scrollTo(0, 0); };
+  $('rsYes').onclick = () => { world = null; state = null; particles = []; floorFood = []; ev = null; save(); render(true); back(); $('nameInput').value = ''; window.scrollTo(0, 0); };
 }
 $('resetBtn').addEventListener('click', askReset);
 $('soundBtn').addEventListener('click', () => {
@@ -1269,18 +1547,19 @@ $('soundBtn').textContent = `Suoni: ${sound ? 'sì' : 'no'}`;
 
 /* ================= trasferimento ================= */
 function encodeSave(){
-  const json = JSON.stringify({v:3, state});
+  const json = JSON.stringify({v:4, world});
   return 'BLOB1:' + btoa(unescape(encodeURIComponent(json)));
 }
 function decodeSave(code){
   const c = String(code).trim().replace(/\s+/g, '');
   const body = c.startsWith('BLOB1:') ? c.slice(6) : c;
   const data = JSON.parse(decodeURIComponent(escape(atob(body))));
-  if (!data || !data.state || !data.state.name || !data.state.stage) throw new Error('vuoto');
-  return data.state;
+  const x = data && (data.world || data.state);
+  if (!x || !(x.blobs || (x.name && x.stage))) throw new Error('vuoto');
+  return x;
 }
 function openTransfer(){
-  const has = !!state;
+  const has = !!world;
   openSheet('Trasferisci il tuo blob', `
     ${has ? `<p class="shopnote" style="margin-bottom:8px"><b>Da qui a un altro posto.</b> Safari e l'app sulla schermata Home tengono i dati separati: copia questo codice e incollalo dall'altra parte.</p>
     <textarea class="code" id="exportCode" readonly aria-label="Codice del tuo blob">${encodeSave()}</textarea>
@@ -1303,14 +1582,15 @@ function openTransfer(){
       try { incoming = decodeSave($('importCode').value); }
       catch { $('importErr').textContent = $('importCode').value.trim() ? 'Questo codice non funziona. Copialo di nuovo per intero, da BLOB1: fino alla fine.' : 'Incolla prima il codice.'; return; }
       const doLoad = () => {
-        state = migrate(incoming); simulate(state, Date.now());
-        floorFood = []; ev = null; welcome = true; trayKey = ''; diaryKey = '';
-        log(state, Date.now(), `${state.name} si è trasferito qui. Ciao di nuovo!`);
-        save(); render(true); closeSheet(); say(`Bentornato ${state.name}!`, 2600);
+        world = migrateWorld(incoming);
+        for (const b of houseBlobs()) simulate(view(b), Date.now());
+        evoQueue = [];
+        setRoom(world.activeRoom || 0); welcome = true;
+        save(); closeSheet(); say(state && state.name ? `Bentornato ${state.name}!` : 'Casa trasferita!', 2600);
       };
       if (!has){ doLoad(); return; }
       const a = $('importActions');
-      a.innerHTML = `<span class="shopnote" style="flex:1 1 100%">Questo sostituisce ${esc(state.name)} con ${esc(incoming.name)}.</span><button class="btn ghost" id="noLoad" type="button">Annulla</button><button class="btn" id="yesLoad" type="button">Sostituisci</button>`;
+      a.innerHTML = `<span class="shopnote" style="flex:1 1 100%">Questo sostituisce tutta la tua casa con quella del codice.</span><button class="btn ghost" id="noLoad" type="button">Annulla</button><button class="btn" id="yesLoad" type="button">Sostituisci</button>`;
       $('noLoad').onclick = () => openTransfer();
       $('yesLoad').onclick = doLoad;
     });
@@ -1333,6 +1613,21 @@ const ball = {x:0, y:0, vx:0, vy:0, r:14, ground:true, held:false, spin:0};
 let floorFood = [], dragFood = null, ev = null, nextEvAt = Date.now() + rnd(12, 22)*1000, fallingPot = null;
 let lastTouch = Date.now(), inited = false;
 
+function resetScene(){
+  floorFood = []; ev = null; particles = []; fallingPot = null; dragFood = null; ptr.down = false;
+  nextEvAt = Date.now() + rnd(12, 22) * 1000; flower = null;
+  Object.assign(pet, {vx:0, vy:0, ground:true, rot:0, vr:0, sq:1, sqv:0, held:false, beh:null, anim:null, expr:null, look:null, hop:0, wob:0, airFrom:0});
+  if (W){ geo(); pet.x = W * .55; pet.y = groundY(); ball.x = W * .3; ball.y = FLOOR - ball.r; ball.vx = ball.vy = 0; ball.ground = true; ball.held = false; }
+}
+let flower = null, nextFlowerAt = Date.now() + 3 * MIN;
+function roomColors(){
+  const r = world && world.rooms[activeRoom], th = r ? r.theme : 'rosa';
+  if (th === 'rosa') return {wall: tokens.wall, wall2: tokens['wall-2'], floor: tokens.floor, rug: tokens.rug};
+  const h = THEMES[th].h, cs = getComputedStyle(document.documentElement).colorScheme;
+  const dark = document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  return dark ? {wall:`hsl(${h},22%,22%)`, wall2:`hsl(${h},22%,27%)`, floor:`hsl(${h},20%,29%)`, rug:`hsl(${h},28%,36%)`}
+              : {wall:`hsl(${h},70%,92%)`, wall2:`hsl(${h},80%,96%)`, floor:`hsl(${h},55%,86%)`, rug:`hsl(${h},75%,80%)`};
+}
 function readTokens(){
   const cs = getComputedStyle(document.documentElement);
   for (const k of ['wall','wall-2','floor','rug','panel','ink','line']) tokens[k] = cs.getPropertyValue('--' + k).trim();
@@ -1459,7 +1754,7 @@ function rub(seg, speed){
   if (speed > 1300){
     pet.tickle += .12;
     setExpr('laugh', .6); s.fun = clamp(s.fun + .9); burst('note', 1); if (Math.random() < .5) sfx.giggle();
-    mission('tickle'); wishProgress('tickle', 1, 8);
+    mission('tickle'); wishProgress('tickle', 1, 8); note('tickle');
     if (ev && ev.type === 'storm') ev.calm += seg * 2;
     pet.wob = 1; squish(.15);
     if (pet.tickle > 3.2){
@@ -1471,7 +1766,7 @@ function rub(seg, speed){
     setExpr(s.trust < 35 ? 'shy' : 'love', .8);
     s.trust = clamp(s.trust + (s.trust < 35 ? 1.2 : .6)); s.fun = clamp(s.fun + .35);
     burst('heart', 1); if (Math.random() < .35) sfx.purr();
-    budgetXp(1); mission('pets');
+    budgetXp(1); mission('pets'); note('pet');
     if (ev && ev.type === 'storm'){ ev.calm += 95; if (ev.calm > 600) stormCalm(); }
     if (s.trust < 35) chat(`${s.name} all'inizio si irrigidisce… poi si lascia andare.`, .6);
     else chat(pick(['Prrr…','Che bello…','Ancora!','Mmmh ♡']), .25);
@@ -1485,7 +1780,7 @@ function scrub(seg){
   s.hygiene = clamp(s.hygiene + seg * .085);
   if (ptr.scrub > 30){ ptr.scrub = 0; burst('bubble', 2, ptr.x, ptr.y); if (Math.random() < .25) sfx.pop(); setExpr('love', .6); pet.wob = .6; }
   if (was < 100 && s.hygiene >= 100){
-    say('Pulitissimo! Profuma di sapone.', 2200); burst('sparkle', 12); sfx.giggle(); budgetXp(3);
+    say('Pulitissimo! Profuma di sapone.', 2200); burst('sparkle', 12); sfx.giggle(); budgetXp(3); note('clean', 3);
     fulfill('bath');
   }
 }
@@ -1501,6 +1796,8 @@ function startGrab(){
 function release(vel){
   pet.held = false;
   pet.vx = lim(vel.x, -2400, 2400); pet.vy = lim(vel.y, -2600, 2600);
+  if (isForm('razzo')){ pet.vx *= 1.4; pet.vy *= 1.5; sfx.wee(); }
+  note('throw');
   pet.vr = lim(pet.vx / (R * 4), -12, 12);
   pet.airFrom = pet.y; pet.airStart = performance.now();
   const now = Date.now(); pet.throws = pet.throws.filter(t => now - t < 30000); pet.throws.push(now);
@@ -1511,15 +1808,16 @@ function tap(p){
   const s = state;
   // eventi e oggetti prima del blob
   if (ev && evTap(p)) return;
+  if (flower && Math.hypot(p.x - flower.x, p.y - (FLOOR - R*.25)) < R*.55){ const c = rnd(2, 3); addCoins(c); floatText('+' + c, flower.x, FLOOR - R*.6); sfx.coin(); burst('sparkle', 8, flower.x, FLOOR - R*.3); flower = null; budgetXp(1); saveSoon(); return; }
   if (s.gift && Math.hypot(p.x - s.gift.x * W, p.y - (FLOOR - R * .3)) < R * .5){ openGift(); return; }
   for (let i = 0; i < s.messes.length; i++){
     const m = s.messes[i], mx = m.type === 'pot' ? W * .83 : m.x * W, my = m.type === 'pot' ? FLOOR - R * .15 : H * .6;
-    if (Math.hypot(p.x - mx, p.y - my) < R * .6){ s.messes.splice(i, 1); burst('sparkle', 10, mx, my); sfx.pop(); gainXp(3); mission('clean'); say(m.type === 'pot' ? 'Pianta rimessa a posto!' : 'Muro pulito!'); if (awake()) setExpr('shy', 1.5); save(); return; }
+    if (Math.hypot(p.x - mx, p.y - my) < R * .6){ s.messes.splice(i, 1); burst('sparkle', 10, mx, my); sfx.pop(); gainXp(3); mission('clean'); note('clean', 2); say(m.type === 'pot' ? 'Pianta rimessa a posto!' : 'Muro pulito!'); if (awake()) setExpr('shy', 1.5); save(); return; }
   }
   if (!s.walk) for (let i = 0; i < s.poops; i++){
     const px = W * (.2 + i * .1), py = FLOOR + H * .03;
     if (Math.hypot(p.x - px, p.y - py) < Math.max(26, R * .45)){
-      s.poops--; s.hygiene = clamp(s.hygiene + 6); burst('sparkle', 8, px, py); sfx.pop(); gainXp(2); mission('clean'); floatText('Pulito!', px, py - 20, '#2fb585');
+      s.poops--; s.hygiene = clamp(s.hygiene + 6); burst('sparkle', 8, px, py); sfx.pop(); gainXp(2); mission('clean'); note('clean', 2); floatText('Pulito!', px, py - 20, '#2fb585');
       if (s.wish && s.wish.type === 'bath' && s.hygiene >= 100) fulfill('bath');
       save(); return;
     }
@@ -1562,7 +1860,7 @@ function doTrick(tr, dir, self){
   const s = state; if (!awake() || pet.held) return;
   if (s.energy < 8){ if (!self) say('Troppo stanco per i trucchi…'); return; }
   pet.beh = null; s.fun = clamp(s.fun + 2); s.energy = clamp(s.energy - .5);
-  if (!self){ s.tricksDone++; budgetXp(2); mission('tricks'); mission('trickVar', 1, tr); }
+  if (!self){ s.tricksDone++; budgetXp(2); mission('tricks'); mission('trickVar', 1, tr); note('trick'); }
   if (tr === 'wave'){ pet.anim = {type:'wave', t:0, dur:1.6}; say('Ciao ciao!', 1500); sfx.giggle(); }
   else if (tr === 'jump'){ pet.ground = false; pet.vy = -Math.sqrt(2 * G() * H * .5); pet.vr = (2 * Math.PI) / (2 * -pet.vy / G()) * (pet.dir || 1); pet.anim = {type:'flip', t:0, dur:9}; sfx.wee(); setExpr('wee', 1.2); }
   else if (tr === 'spin'){ pet.anim = {type:'spin', t:0, dur:.9}; sfx.wee(); setExpr('happy', 1.2); }
@@ -1633,8 +1931,9 @@ function eat(id, byHand, fx, fy){
   }
   s.hunger = clamp(s.hunger + F.hunger); s.fun = clamp(s.fun + F.fun);
   s.health = clamp(s.health + (F.health || 0)); s.thirst = clamp(s.thirst + (F.thirst || 0)); s.trust = clamp(s.trust + 1);
-  if (F.sweet) s.snacks++;
-  if (byHand){ gainXp(id === 'pappa' ? 1 : 3); mission('feedHand'); }
+  if (F.sweet){ s.snacks++; note('sweet'); if (isForm('budino')) s.fun = clamp(s.fun + F.fun * .5); }
+  if (byHand){ gainXp(id === 'pappa' ? 1 : 3); mission('feedHand'); note('feed'); }
+  if (['mela','carota','zuppa'].includes(id)) note('healthy');
   if (id === s.traits.favFood){
     const first = reveal(s, 'favFood');
     s.fun = clamp(s.fun + 15); s.trust = clamp(s.trust + 3); burst('heart', 12); setExpr('happy', 2);
@@ -1658,13 +1957,15 @@ function startEvent(force){
   const s = state, nm = s.name, night = isNight();
   const opts = ['butterfly','bubbles','glint','visitor','starRain','mouse','balloon','letter','storm'];
   if (night) opts.push('star','ghost','ghost'); else opts.push('rainbow','bird','bird','butterfly');
+  if (isForm('budino')) opts.push('mouse', 'mouse');
+  if (isForm('lumino') && night) opts.push('star', 'star', 'starRain');
   let pool = opts.filter(o => !recentEv.includes(o)); if (!pool.length) pool = opts;
   const type = force || pick(pool); recentEv.push(type); if (recentEv.length > 5) recentEv.shift();
   pet.beh = null;
   if (type === 'butterfly'){ ev = {type, x:-30, y:H*.35, vx:W*.16, base:H*.32, t:0, life:24, turns:0}; say('Una farfalla! Prendila al volo!', 2400); }
   else if (type === 'bubbles'){ ev = {type, t:0, life:12, popped:0, items:Array.from({length:6}, (_, i) => ({x:rf(.1,.9)*W, y:FLOOR + i*H*.12, r:rf(.035,.055)*W, ph:rf(0,6), alive:true}))}; say('Bolle di sapone! Scoppiale!', 2200); }
   else if (type === 'glint'){ ev = {type, x:rf(.15,.85)*W, t:0, life:22}; say(`${nm} ha visto qualcosa che luccica…`, 2400); }
-  else if (type === 'visitor'){ const k = pick(Object.keys(PAL).filter(k => k !== kindOf(s))); ev = {type, x:W + R, dir:-1, pal:PAL[k], t:0, life:20, greeted:false}; say('Toc toc! È arrivato un amico!', 2400); sfx.giggle(); }
+  else if (type === 'visitor'){ const k = pick(Object.keys(FORMS).filter(k => k !== kindOf(s) && !FORMS[k].dark)); ev = {type, x:W + R, dir:-1, pal:FORMS[k].pal, t:0, life:20, greeted:false}; say('Toc toc! È arrivato un amico!', 2400); sfx.giggle(); }
   else if (type === 'star'){ ev = {type, t:0, life:4.5}; say('Guarda fuori! Una stella cadente!', 2400); }
   else if (type === 'rainbow'){ ev = {type, t:0, life:14}; say('È spuntato l\'arcobaleno! Toccalo!', 2400); }
   else if (type === 'starRain'){ ev = {type, t:0, life:14, got:0, items:Array.from({length:9}, (_, i) => ({x:rf(.08,.92)*W, y:-20 - i*H*.11, vy:H*rf(.13,.2), ph:rf(0,6), alive:true}))}; say('Piovono stelline! Raccoglile!', 2400); }
@@ -1683,7 +1984,7 @@ function evReward(stk, coins, xp, msg, x, y){
   const nw = stk && giveSticker(s, stk);
   say(nw ? `${msg} Nuova figurina: ${STICKERS[stk].e} ${STICKERS[stk].n}!` : msg, 2800);
   if (ev && EV_MEMO[ev.type]) s.lastEv = EV_MEMO[ev.type];
-  mission('events'); saveSoon();
+  mission('events'); note('event'); saveSoon();
 }
 const birdPos = () => { const w = WIN(); return {x: w.x + w.w * .78, y: w.y + w.h + 2 - R * .18}; };
 function evTarget(){
@@ -1759,6 +2060,9 @@ function evTap(p){
     evReward('topolino', 3, 4, 'Preso! Per scusarsi ti lascia un biscotto.', e.x, e.y - 20); endEvent(); return true;
   }
   if (e.type === 'balloon' && Math.hypot(p.x - e.x, p.y - e.y) < R * .5){ popBalloon(false); return true; }
+  if (e.type === 'ghost' && Math.hypot(p.x - e.x, p.y - e.y) < R * .6 && isForm('ombra')){
+    burst('heart', 6, e.x, e.y); evReward('fantasmino', 5, 5, `Il fantasmino è amico di ${s.name}: vi lascia un regalo!`, e.x, e.y); endEvent(); return true;
+  }
   if (e.type === 'ghost' && Math.hypot(p.x - e.x, p.y - e.y) < R * .6){
     e.hits++; sfx.pop(); burst('sparkle', 6, e.x, e.y);
     if (e.hits >= 3){ s.trust = clamp(s.trust + 3); burst('heart', 8); evReward('fantasmino', 4, 5, `Fantasmino scacciato! ${s.name} ti abbraccia.`, e.x, e.y); endEvent(); }
@@ -1864,7 +2168,7 @@ function choose(){
     if (T === 'glint') return {type:'dig', until: now + 6000};
     if (T === 'visitor') return {type:'greet', until: now + 5000};
     if (T === 'star' || T === 'rainbow' || T === 'bird') return {type:'window', until: now + 4000};
-    if ((T === 'ghost' || T === 'storm') && !ev.done) return {type:'scared', until: now + 3000};
+    if (((T === 'ghost' && !isForm('ombra')) || T === 'storm') && !ev.done) return {type:'scared', until: now + 3000};
     if (T === 'letter') return {type:'come', tx: lim(ev.x + R * 1.3, R, W - R), until: now + 3000};
   }
   if (s.distrust) add({type:'sulk', tx: W * .85}, 4);
@@ -1884,7 +2188,8 @@ function choose(){
   if (s.furnOn.includes('pianta')) add({type:'sniff'}, 1);
   if (s.furnOn.includes('quadro')) add({type:'art'}, .8);
   add({type:'hiccup'}, .5);
-  add({type:'shoot'}, !ball.held && Math.hypot(ball.vx, ball.vy) < 30 ? 1.4 : 0);
+  add({type:'shoot'}, (!ball.held && Math.hypot(ball.vx, ball.vy) < 30 ? 1.4 : 0) * (isForm('pallino') ? 5 : 1));
+  if (isForm('saltimbanco')) add({type:'show'}, 3);
   add({type:'sing'}, .9);
   add({type:'tail'}, .6);
   if (s.tricksDone > 0 && LEVELS.slice(0, s.level).some(l => l.trick)) add({type:'mimic'}, .8);
@@ -1930,7 +2235,7 @@ function brain(dt){
         const dirK = b.type === 'fetch' ? toCenter : (Math.sign(ball.x - pet.x) || 1);
         ball.vx = dirK * (b.type === 'fetch' ? rf(160, 260) : rf(320, 620)); ball.vy = -(b.type === 'fetch' ? rf(80, 160) : rf(250, 520)); ball.ground = false;
         sfx.pop(); squish(.2); budgetXp(1); s.fun = clamp(s.fun + 1); ball.by = 'blob';
-        b.kicks = (b.kicks || 0) + 1; mission('kicks');
+        b.kicks = (b.kicks || 0) + 1; mission('kicks'); note('ball', .5);
         if (state.wish && state.wish.type === 'ball') wishProgress('ball', 1, 3);
         if (b.type === 'fetch' && Math.abs(ball.x - W/2) < W * .2){ b.done = true; chat('Eccola!', 1); if (Math.random() < .25){ addCoins(1); floatText('+1', pet.x, pet.y - R); sfx.coin(); } }
         if (b.type === 'ball' && b.kicks > 2) b.done = true;
@@ -1998,7 +2303,7 @@ function brain(dt){
       } else if (b.phase === 1){
         pet.look = {x: h.x, y: h.y}; b.t2 += dt;
         if (b.t2 > .55){
-          const T = rf(.75, 1), hit = Math.random() < .5;
+          const T = rf(.75, 1), hit = Math.random() < (isForm('pallino') ? .85 : .5);
           const tx = h.x + (hit ? rf(-h.w * .15, h.w * .15) : pick([-1, 1]) * rf(h.w * .55, h.w * .9)), ty = h.y - 4;
           ball.ground = false; ball.y = Math.min(ball.y, FLOOR - ball.r - 2); ball.by = 'blob';
           ball.vx = (tx - ball.x) / T; ball.vy = (ty - ball.y - .5 * G() * T * T) / T;
@@ -2018,6 +2323,13 @@ function brain(dt){
     case 'mimic':
       if (!b.d){ b.d = 1; const tricks = LEVELS.slice(0, s.level).filter(l => l.trick).map(l => l.trick); const tr = pick(tricks);
         chat('Guarda cosa so fare!', 1); setTimeout(() => { if (awake() && !pet.held && pet.ground) doTrick(tr, undefined, true); }, 800); b.until = Date.now() + 3000; }
+      break;
+    case 'show':
+      if (!b.d){ b.d = 1; const tr = pick(['wave','spin','dance','jump']); chat(pick(['Signore e signori…!','Tenetevi forte!','E ora… un numero speciale!']), 1);
+        setTimeout(() => { if (!awake() || pet.held || !pet.ground) return; doTrick(tr, undefined, true);
+          setTimeout(() => { if (!state) return; hoopCoins = Math.min(6, hoopCoins + (Date.now() - lastHoopRefill) / 120000); lastHoopRefill = Date.now();
+            if (hoopCoins >= 1){ hoopCoins--; addCoins(1); floatText('👏 +1', pet.x, pet.y - R * 1.3); sfx.coin(); } }, 1100); }, 800);
+        b.until = Date.now() + 4000; }
       break;
     case 'eatFloor': {
       const f = b.food;
@@ -2055,10 +2367,11 @@ function physics(dt){
   }
   if (!pet.ground){
     const ppy = pet.y;
-    pet.vy += g * dt; pet.x += pet.vx * dt; pet.y += pet.vy * dt; pet.rot += pet.vr * dt;
+    pet.vy += g * (isForm('nuvola') ? .45 : 1) * dt; pet.x += pet.vx * dt; pet.y += pet.vy * dt; pet.rot += pet.vr * dt;
     const thrown = pet.airFrom && !pet.anim;
-    if (pet.x < R){ pet.x = R; pet.vx = Math.abs(pet.vx) * .55; squish(.2); sfx.boing(); if (thrown && Math.abs(pet.vx) > 60) mission('bounceWall'); }
-    if (pet.x > W - R){ pet.x = W - R; pet.vx = -Math.abs(pet.vx) * .55; squish(.2); sfx.boing(); if (thrown && Math.abs(pet.vx) > 60) mission('bounceWall'); }
+    if (isForm('ombra')){ if (pet.x < -R * .6) pet.x = W + R * .5; else if (pet.x > W + R * .6) pet.x = -R * .5; }
+    else if (pet.x < R){ pet.x = R; pet.vx = Math.abs(pet.vx) * .55; squish(.2); sfx.boing(); if (thrown && Math.abs(pet.vx) > 60) mission('bounceWall'); }
+    else if (pet.x > W - R){ pet.x = W - R; pet.vx = -Math.abs(pet.vx) * .55; squish(.2); sfx.boing(); if (thrown && Math.abs(pet.vx) > 60) mission('bounceWall'); }
     if (pet.y < RY){ pet.y = RY; pet.vy = Math.abs(pet.vy) * .4; squish(.25); sfx.boing(); if (thrown) mission('ceiling'); }
     { const h = HOOP(); if (thrown && ppy < h.y && pet.y >= h.y && pet.vy > 0 && Math.abs(pet.x - h.x) < h.w / 2 + R * .3) dunk(); }
     // urto con la palla in volo
@@ -2067,8 +2380,9 @@ function physics(dt){
     if (pet.y >= groundY()){
       pet.y = groundY();
       const impact = pet.vy;
-      if (impact > 420){
-        pet.vy = -impact * .38; pet.vx *= .7; pet.vr *= .5;
+      const gel = isForm('gelatina');
+      if (impact > (gel ? 160 : 420)){
+        pet.vy = -impact * (gel ? .74 : .38); pet.vx *= .7; pet.vr *= .5;
         squish(lim(impact / 2600, .1, .45)); sfx.boing();
       } else {
         pet.ground = true; pet.vy = 0; pet.vx = 0; pet.vr = 0;
@@ -2142,11 +2456,12 @@ function scoreHoop(by){
     let c = 0; if (hoopCoins >= 1){ hoopCoins--; c = hoopStreak >= 3 ? 2 : 1; addCoins(c); sfx.coin(); floatText(`+${c}`, h.x + h.w, h.y); }
     floatText(hoopStreak > 1 ? `Canestro x${hoopStreak}!` : 'Canestro!', h.x, h.y - H * .12, '#ff6fae');
     if (hoopStreak > s.records.hoop) s.records.hoop = hoopStreak;
-    mission('hoop'); fulfill('hoop'); budgetXp(1);
+    mission('hoop'); fulfill('hoop'); budgetXp(1); note('ball', 2);
     if (s.hoops >= 10 && giveSticker(s, 'canestro')) toast('Nuova figurina: 🏀 Cecchino!');
     if (awake()){ setExpr('happy', 1.5); if (pet.ground && !pet.held){ pet.vy = -H * .7; pet.ground = false; } chat(pick(['Canestro!!','Che tiro!','Sei un campione!','Ancora uno!']), .8); }
   } else {
     floatText('Canestro!', h.x, h.y - H * .12, '#a893ff');
+    if (isForm('pallino')){ hoopCoins = Math.min(6, hoopCoins + (now - lastHoopRefill) / 120000); lastHoopRefill = now; if (hoopCoins >= 1){ hoopCoins--; addCoins(1); floatText('+1', h.x + h.w, h.y); sfx.coin(); } }
     if (awake()){ setExpr('happy', 2); say(pick(['Ho fatto canestro! Hai visto?!','Tre punti per me!','Sono un fenomeno!']), 2000); s.fun = clamp(s.fun + 3); burst('heart', 4); }
   }
   saveSoon();
@@ -2193,7 +2508,8 @@ function emoji(e, x, y, size, rot){
   ctx.fillText(e, 0, 0); ctx.restore();
 }
 function drawRoom(t, night){
-  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, tokens['wall-2']); g.addColorStop(1, tokens.wall);
+  const RC = roomColors();
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, RC.wall2); g.addColorStop(1, RC.wall);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = tokens.line; for (let y = 18; y < FLOOR - 20; y += 34) for (let x = (y/34 % 2)*17 + 10; x < W; x += 34){ ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill(); }
   const w = WIN(), wx = w.x, wy = w.y, ww = w.w, wh = w.h;
@@ -2234,8 +2550,8 @@ function drawRoom(t, night){
     ctx.fillStyle = '#ffb3cf'; roundRect(sx + W*.07, sy - 18, 20, 18, 5); ctx.fill();
     ctx.fillStyle = '#7fcf9e'; for (const a of [-.6, 0, .6]){ ctx.save(); ctx.translate(sx + W*.07 + 10, sy - 18); ctx.rotate(a + Math.sin(t*1.3)*.05); ctx.beginPath(); ctx.ellipse(0, -10, 5, 11, 0, 0, 7); ctx.fill(); ctx.restore(); }
   }
-  ctx.fillStyle = tokens.floor; ctx.fillRect(0, FLOOR - H*.08, W, H);
-  ctx.fillStyle = tokens.rug; ctx.beginPath(); ctx.ellipse(W*.55, FLOOR + H*.02, W*.32, H*.06, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = RC.floor; ctx.fillRect(0, FLOOR - H*.08, W, H);
+  ctx.fillStyle = RC.rug; ctx.beginPath(); ctx.ellipse(W*.55, FLOOR + H*.02, W*.32, H*.06, 0, 0, 7); ctx.fill();
   if (state) for (const id of state.furnOn){ const F = FURN[id]; emoji(F.e, F.x*W, F.y*H, F.s*H); }
   if (state && state.furnOn.includes('lanterna') && night){ const gl = ctx.createRadialGradient(W*.9, H*.235, 2, W*.9, H*.235, W*.25); gl.addColorStop(0, 'rgba(255,190,90,.35)'); gl.addColorStop(1, 'rgba(255,190,90,0)'); ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H); }
   // vaso caduto
@@ -2279,6 +2595,7 @@ function blobPath(rx, ry, t, kind){
   for (let i = 0; i < N; i++){
     const a = i/N*Math.PI*2; let r = 1 + .025*Math.sin(a*3 + t*2) + pet.wob * .05 * Math.sin(a*5 + t*25);
     if (kind === 'nuvola' && Math.sin(a) < .2) r += .07*Math.max(0, Math.cos(a*6));
+    if (kind === 'ombra' && Math.sin(a) > .3) r += .06*Math.sin(a*9 + t*4);
     let x = Math.cos(a)*rx*r, y = Math.sin(a)*ry*r;
     if (y > ry*.78) y = ry*.78 + (y - ry*.78)*.3;
     pts.push([x, y]);
@@ -2299,9 +2616,13 @@ function currentExpr(){
 }
 function drawPet(t){
   const s = state;
-  if (!s || s.stage === 'egg'){ pet.y = groundY(); drawEgg(t, s); return; }
+  if (!s){ if (!world){ pet.y = groundY(); drawEgg(t, s); } return; }
+  if (s.stage === 'egg'){ pet.y = groundY(); drawEgg(t, s); return; }
   if (s.walk) return;
-  const kind = kindOf(s), pal = PAL[kind], m = currentExpr();
+  const kind = kindOf(s), pal = palFor(s), m = currentExpr();
+  const FD = FORMS[kind] || {}, INK = FD.dark ? '#fff6d8' : '#3b2842', HL = FD.dark ? '#2c3570' : '#fff';
+  if (kind === 'lumino'){ const gl = ctx.createRadialGradient(pet.x, pet.y, R*.4, pet.x, pet.y, R*(isNight() ? 2.2 : 1.5)); gl.addColorStop(0, 'rgba(255,230,140,.35)'); gl.addColorStop(1, 'rgba(255,230,140,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(pet.x, pet.y, R*2.2, 0, 7); ctx.fill(); }
+  if (s.shiny){ ctx.fillStyle = '#ffe27a'; for (let i = 0; i < 3; i++){ const a = t*1.3 + i*2.1; ctx.globalAlpha = .5 + .5*Math.sin(t*4 + i); star4(pet.x + Math.cos(a)*R*1.25, pet.y + Math.sin(a)*R*.9, R*.08); } ctx.globalAlpha = 1; }
   const breathe = reduced ? 0 : Math.sin(t*(m === 'sleep' ? 1.2 : 2.2))*.03;
   const hopY = pet.ground && pet.hop ? -Math.abs(Math.sin(pet.hop)) * R * .14 : 0;
   const rx = R*(1 + breathe), ry = RY*(1 - breathe);
@@ -2319,14 +2640,36 @@ function drawPet(t){
   if (kind === 'stellino' && !s.hat){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -ry*.9);
     ctx.quadraticCurveTo(R*.25*Math.sin(t*2), -ry*1.25, R*.1*Math.sin(t*2), -ry*1.45); ctx.stroke();
     ctx.fillStyle = '#ffcf3f'; star5(R*.1*Math.sin(t*2), -ry*1.5, R*.2); }
-  if (s.stage === 'child'){ ctx.fillStyle = pal.b; for (const d of [-1, 1]){ ctx.beginPath(); ctx.ellipse(d*rx*.55, -ry*.78, R*.17, R*.22, d*.4, 0, 7); ctx.fill(); } }
+  if (kind === 'morbidello'){ ctx.fillStyle = pal.b; for (const d of [-1, 1]){ ctx.beginPath(); ctx.ellipse(d*rx*.55, -ry*.8, R*.2, R*.2, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#ffc6dc'; ctx.beginPath(); ctx.arc(d*rx*.55, -ry*.8, R*.1, 0, 7); ctx.fill(); ctx.fillStyle = pal.b; } }
+  if (kind === 'saltello'){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.lineCap = 'round'; for (const d of [-1, 1]){ const sw = Math.sin(t*4 + d)*R*.08; ctx.beginPath(); ctx.moveTo(d*R*.3, -ry*.85); ctx.quadraticCurveTo(d*R*.45 + sw, -ry*1.2, d*R*.38 + sw, -ry*1.35); ctx.stroke(); ctx.fillStyle = '#ffcf3f'; ctx.beginPath(); ctx.arc(d*R*.38 + sw, -ry*1.38, R*.08, 0, 7); ctx.fill(); } }
   if (kind === 'muschio' && !s.hat){ ctx.fillStyle = '#6fbf73'; ctx.save(); ctx.translate(0, -ry*.92); ctx.rotate(Math.sin(t*1.5)*.15);
     ctx.beginPath(); ctx.ellipse(-R*.12, -R*.12, R*.1, R*.2, -.7, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(R*.12, -R*.14, R*.1, R*.22, .7, 0, 7); ctx.fill(); ctx.restore(); }
+  if (kind === 'razzo'){ ctx.fillStyle = '#d94b4b'; for (const d of [-1, 1]){ ctx.beginPath(); ctx.moveTo(d*rx*.75, ry*.1); ctx.lineTo(d*rx*1.18, ry*.72); ctx.lineTo(d*rx*.55, ry*.62); ctx.closePath(); ctx.fill(); } }
+  if (kind === 'esploratore'){ ctx.fillStyle = '#8a5a2b'; roundRect(-rx*1.02, -ry*.35, rx*.5, ry*.9, R*.12); ctx.fill(); ctx.fillStyle = '#a8743f'; roundRect(-rx*.98, -ry*.1, rx*.42, ry*.3, R*.06); ctx.fill(); }
+  if (kind === 'lumino' && !s.hat){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -ry*.9); ctx.lineTo(0, -ry*1.25); ctx.stroke();
+    const gl = .6 + .4*Math.sin(t*3); ctx.fillStyle = `rgba(255,230,120,${gl})`; ctx.beginPath(); ctx.arc(0, -ry*1.32, R*.12, 0, 7); ctx.fill(); }
   // braccino per il saluto
   if (pet.anim && pet.anim.type === 'wave'){ ctx.save(); ctx.translate(rx*.85, -ry*.1); ctx.rotate(-1.2 + Math.sin(pet.anim.t*14)*.5); ctx.fillStyle = pal.b; ctx.beginPath(); ctx.ellipse(0, -R*.25, R*.13, R*.28, 0, 0, 7); ctx.fill(); ctx.restore(); }
+  if (kind === 'gelatina' || kind === 'ombra') ctx.globalAlpha = kind === 'ombra' ? .82 : .88;
   blobPath(rx, ry, t, kind);
   const g = ctx.createRadialGradient(-rx*.35, -ry*.45, R*.1, 0, 0, R*1.15);
   g.addColorStop(0, pal.a); g.addColorStop(1, pal.b); ctx.fillStyle = g; ctx.fill();
+  ctx.globalAlpha = 1;
+  if (kind === 'gelatina'){ ctx.fillStyle = 'rgba(255,255,255,.45)'; for (let i = 0; i < 4; i++){ const a = t*.7 + i*1.7; ctx.beginPath(); ctx.arc(Math.cos(a)*R*.45, Math.sin(a*1.3)*R*.3 + R*.1, R*(.05 + (i % 2)*.03), 0, 7); ctx.fill(); } }
+  if (kind === 'lumino'){ for (let i = 0; i < 5; i++){ ctx.fillStyle = `rgba(255,230,120,${.5 + .5*Math.sin(t*2 + i)})`; ctx.beginPath(); ctx.arc(Math.cos(i*1.3)*R*.6, Math.sin(i*2.1)*R*.35 + R*.15, R*.045, 0, 7); ctx.fill(); } }
+  if (kind === 'pallino'){ ctx.save(); blobPath(rx, ry, t, kind); ctx.clip(); ctx.strokeStyle = 'rgba(90,40,10,.55)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-rx, ry*.05); ctx.quadraticCurveTo(0, ry*.25, rx, ry*.05); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -ry); ctx.lineTo(0, -ry*.62); ctx.moveTo(0, ry*.55); ctx.lineTo(0, ry); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-rx*1.15, 0, rx*.6, -.9, .9); ctx.stroke(); ctx.beginPath(); ctx.arc(rx*1.15, 0, rx*.6, Math.PI - .9, Math.PI + .9); ctx.stroke(); ctx.restore();
+    if (!s.hat){ ctx.fillStyle = '#fff'; roundRect(-rx*.75, -ry*.62, rx*1.5, R*.14, R*.06); ctx.fill(); ctx.fillStyle = '#ff5b5b'; ctx.fillRect(-rx*.75, -ry*.62 + R*.05, rx*1.5, R*.04); } }
+  if (kind === 'razzo'){ ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, -ry*.45, R*.13, 0, 7); ctx.fill(); ctx.strokeStyle = '#d94b4b'; ctx.lineWidth = 2.5; ctx.stroke();
+    if (!pet.ground && Math.hypot(pet.vx, pet.vy) > 500) for (let i = 0; i < 2; i++) particles.push({type:'fire', x: pet.x + rf(-R*.3, R*.3), y: pet.y + RY*.6, vx: -pet.vx*.1, vy: -pet.vy*.1, life:.5, age:0, s: R*.18}); }
+  if (kind === 'bocciolo' && !s.hat){ ctx.save(); ctx.translate(R*.15, -ry*.95); ctx.rotate(Math.sin(t*1.2)*.12);
+    for (let i = 0; i < 5; i++){ const a = i * Math.PI * 2 / 5; ctx.fillStyle = '#ff9ec7'; ctx.beginPath(); ctx.ellipse(Math.cos(a)*R*.13, Math.sin(a)*R*.13, R*.11, R*.08, a, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(0, 0, R*.08, 0, 7); ctx.fill(); ctx.restore(); }
+  if (kind === 'saltimbanco' && !s.hat){ for (const d of [-1, 1]){ ctx.fillStyle = d < 0 ? '#ff6fae' : '#ffc94f'; ctx.beginPath(); ctx.moveTo(d*R*.05, -ry*.9); ctx.quadraticCurveTo(d*R*.55, -ry*1.45, d*R*.7, -ry*1.05); ctx.lineTo(d*R*.45, -ry*.78); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffe27a'; ctx.beginPath(); ctx.arc(d*R*.7, -ry*1.05 + Math.sin(t*6 + d)*2, R*.07, 0, 7); ctx.fill(); } }
+  if (kind === 'esploratore' && !s.hat){ ctx.fillStyle = '#b89155'; ctx.beginPath(); ctx.ellipse(0, -ry*.86, rx*.7, R*.1, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(0, -ry*.95, rx*.42, R*.22, 0, Math.PI, 0); ctx.fill(); ctx.fillStyle = '#6b4a24'; ctx.fillRect(-rx*.42, -ry*.97, rx*.84, R*.05); }
   if (m === 'sick'){ ctx.fillStyle = 'rgba(150,200,110,.35)'; ctx.fill(); }
   // sporco
   if (s.hygiene < 60){ ctx.fillStyle = 'rgba(140,100,70,.35)'; const n = Math.round((60 - s.hygiene) / 10);
@@ -2349,7 +2692,7 @@ function drawPet(t){
   ctx.fillStyle = '#ff8fb3'; ctx.globalAlpha = m === 'love' || m === 'shy' ? .85 : .55;
   ctx.beginPath(); ctx.ellipse(fx - ex*1.45, ey + R*.2, R*.12, R*.07, 0, 0, 7); ctx.ellipse(fx + ex*1.45, ey + R*.2, R*.12, R*.07, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
   if (kind === 'muschio'){ ctx.fillStyle = '#8fb87a'; for (const [dx, dy] of [[-1.3,.05],[-1.1,.12],[1.3,.05],[1.1,.12]]){ ctx.beginPath(); ctx.arc(fx + dx*ex, ey + R*.13 + dy*R, R*.025, 0, 7); ctx.fill(); } }
-  ctx.fillStyle = ctx.strokeStyle = '#3b2842'; ctx.lineWidth = Math.max(2, R*.05); ctx.lineCap = 'round';
+  ctx.fillStyle = ctx.strokeStyle = INK; ctx.lineWidth = Math.max(2, R*.05); ctx.lineCap = 'round';
   const blink = (t % 4.3) < .13;
   for (const d of [-1, 1]){
     const X = fx + d*ex, Y = ey;
@@ -2357,11 +2700,11 @@ function drawPet(t){
     else if (m === 'happy' || m === 'laugh' || m === 'eat'){ ctx.beginPath(); ctx.arc(X, Y + er*.5, er, 1.15*Math.PI, 1.85*Math.PI); ctx.stroke(); }
     else if (m === 'sick' || m === 'dizzy'){ ctx.beginPath(); for (let a = 0; a < Math.PI*4; a += .3){ const rr = er*a/(Math.PI*4); ctx.lineTo(X + Math.cos(a + t*(m === 'dizzy' ? 8 : 3))*rr, Y + Math.sin(a + t*(m === 'dizzy' ? 8 : 3))*rr); } ctx.stroke(); }
     else if (m === 'yuck'){ ctx.beginPath(); ctx.moveTo(X - er*.8, Y - er*.5); ctx.lineTo(X + er*.2*d, Y); ctx.lineTo(X - er*.8, Y + er*.5); ctx.stroke(); }
-    else if (m === 'wee'){ ctx.beginPath(); ctx.arc(X, Y, er*1.05, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(X - er*.35, Y - er*.35, er*.38, 0, 7); ctx.arc(X + er*.3, Y + er*.3, er*.18, 0, 7); ctx.fill(); ctx.fillStyle = '#3b2842'; }
+    else if (m === 'wee'){ ctx.beginPath(); ctx.arc(X, Y, er*1.05, 0, 7); ctx.fill(); ctx.fillStyle = HL; ctx.beginPath(); ctx.arc(X - er*.35, Y - er*.35, er*.38, 0, 7); ctx.arc(X + er*.3, Y + er*.3, er*.18, 0, 7); ctx.fill(); ctx.fillStyle = INK; }
     else {
       const h = m === 'tired' ? er*.55 : er*1.25;
       ctx.beginPath(); ctx.ellipse(X, Y, er*.85, h, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(X - er*.3 + lx*.3, Y - h*.4, er*.32, 0, 7); ctx.fill(); ctx.fillStyle = '#3b2842';
+      ctx.fillStyle = HL; ctx.beginPath(); ctx.arc(X - er*.3 + lx*.3, Y - h*.4, er*.32, 0, 7); ctx.fill(); ctx.fillStyle = INK;
       if (m === 'sad' || m === 'distrust'){ ctx.beginPath(); ctx.moveTo(X - d*er*1.1, Y - er*2.2); ctx.lineTo(X + d*er*.4, Y - er*1.7); ctx.stroke(); }
     }
   }
@@ -2455,6 +2798,7 @@ function drawParticles(dt){
     else if (p.type === 'confetti'){ ctx.fillStyle = p.c; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.age*8); ctx.fillRect(-p.s*.4, -p.s*.2, p.s*.8, p.s*.4); ctx.restore(); }
     else if (p.type === 'text'){ ctx.fillStyle = p.c; ctx.font = `800 ${p.s}px "M PLUS Rounded 1c", sans-serif`; ctx.textAlign = 'center'; ctx.fillText(p.txt, p.x, p.y); }
     else if (p.type === 'food'){ emoji(p.e, p.x, p.y, p.s, p.age*10); }
+    else if (p.type === 'fire'){ ctx.fillStyle = `hsl(${40 - p.age*60},100%,60%)`; ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, p.s*(1 - p.age/p.life)), 0, 7); ctx.fill(); }
     else { ctx.fillStyle = '#e8b97f'; ctx.beginPath(); ctx.arc(p.x, p.y, p.s*.3, 0, 7); ctx.fill(); }
   }
   ctx.globalAlpha = 1;
@@ -2469,12 +2813,14 @@ function frame(now){
     else if (s && awake() && !pet.held && pet.ground && ptr.down && pet.beh && pet.beh.type === 'come') brain(dt);
     physics(dt);
     if (s) updateEvent(dt);
+    if (isForm('bocciolo') && awake() && !flower && Date.now() > nextFlowerAt){ flower = {x: rf(.15, .85) * W, t: 0}; nextFlowerAt = Date.now() + rnd(4, 8) * MIN; chat('Guarda, è sbocciato un fiore!', 1); }
     if (hatchFx){ hatchFx = 0; burst('confetti', 40); sfx.level(); }
     drawRoom(t, isNight());
     if (s && s.poops && !s.walk) for (let i = 0; i < s.poops; i++) drawPoop(W*(.2 + i*.1), FLOOR + H*.03, Math.min(W, H)*.04, t + i);
     if (s && s.gift){ const gx = s.gift.x * W; emoji('🎁', gx, FLOOR - R*.3 - Math.abs(Math.sin(t*3))*4, R*.55); }
     if (ev && ev.type === 'glint') drawEvent(t);
     for (const f of floorFood) emoji(FOODS[f.id].e, f.x, f.y - R*.15, R*.4);
+    if (flower){ flower.t += dt; const sc = Math.min(1, flower.t); emoji('🌼', flower.x, FLOOR - R*.25*sc, R*.5*sc + 1); }
     if (ev && ev.type === 'visitor') drawEvent(t);
     if (ball.y < pet.y) drawBall();
     drawPet(t);
@@ -2492,7 +2838,7 @@ function frame(now){
 /* ================= minigiochi ================= */
 let game = null, runId = 0;
 const wait = ms => new Promise(r => setTimeout(r, ms));
-function palOf(){ return PAL[kindOf(state)] || PAL.baby; }
+function palOf(){ return state ? palFor(state) : FORMS.baby.pal; }
 function openGame(id){
   const s = ready(); if (!s) return;
   if (s.sleeping){ say(`Shh… ${s.name} sta dormendo.`); return; }
@@ -2522,6 +2868,7 @@ document.addEventListener('keydown', e => {
 function finishGame(id, score){
   const s = state; simulate(s, Date.now());
   let coins = id === 'memory' ? score * 2 : id === 'catch' ? Math.floor(score / 2) : score * 3;
+  if (isForm('stellino')) coins = Math.round(coins * 1.5);
   let fun = Math.min(40, 6 + (id === 'memory' ? score * 6 : id === 'catch' ? score * 1.2 : score * 7));
   const fav = s.traits.favGame === id;
   if (fav){ fun *= 1.5; coins += 3; }
@@ -2536,7 +2883,7 @@ function finishGame(id, score){
   if (newFav) log(s, Date.now(), `Scoperto: il gioco preferito di ${s.name} è ${GAMES[id].n}.`);
   if (rec && score >= 3) log(s, Date.now(), `Nuovo record a ${GAMES[id].n}: ${score} ${GAMES[id].unit}!`);
   fulfill('game', id);
-  mission('games', 1, id);
+  mission('games', 1, id); note('game', 3);
   if (rec && score > 0) mission('record');
   if (id === 'memory' && score >= 5) mission('memory5');
   if (id === 'catch' && score >= 15) mission('catch15');
@@ -2711,7 +3058,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) tick
 window.addEventListener('pagehide', () => { if (state) save(); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.claude) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
-if (location.hash === '#debug') window.__bb = {ev: t => { ev = null; startEvent(t); }, get e(){ return ev; }, pet, ball, hoop: () => HOOP(), get W(){ return W; }, get H(){ return H; }, get s(){ return state; }, ensureDay};
+if (location.hash === '#debug') window.__bb = {ev: t => { ev = null; startEvent(t); }, get e(){ return ev; }, pet, ball, hoop: () => HOOP(), get W(){ return W; }, get H(){ return H; }, get s(){ return state; }, get world(){ return world; }, ensureDay, setRoom, tick, raw: () => state && blobById(state.id), render: () => render(true)};
 initRemote();
 })();
 </script>

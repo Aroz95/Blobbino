@@ -1,6 +1,6 @@
 // Blobbino: funziona anche offline.
 // Cambia VERSION quando pubblichi una nuova versione dell'app.
-const VERSION = 'blobbino-v6';
+const VERSION = 'blobbino-v7';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
