@@ -221,6 +221,16 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
 .offer canvas{width:96px;height:72px;border-radius:12px;background:var(--panel-2)}
 .offer s{color:var(--muted)}
 .offer .label{color:var(--ink)}
+.tabin{display:flex;flex-direction:column;gap:12px}
+.housewrap canvas{display:block;width:100%;aspect-ratio:1/1.05;border-radius:24px;cursor:pointer;touch-action:manipulation}
+.hbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hbtns .btn{padding:12px 10px}
+.roomhead{display:flex;align-items:center;gap:8px}
+.present{flex:1;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;min-width:0;padding:2px}
+.present::-webkit-scrollbar{display:none}
+.roomhead .btn{flex:none}
+.bl .where{font-size:12.5px;color:var(--muted)}
+.bl .st{font-size:15px;letter-spacing:2px}
 .big-em{font-size:56px;text-align:center;line-height:1.1}
 .sheet-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 
@@ -264,7 +274,17 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
   </header>
 
   <section class="tab" id="tab-casa">
-    <div class="rooms" id="roomBar" hidden></div>
+    <div id="houseView" class="tabin" hidden>
+      <div class="housewrap"><canvas id="houseCv" aria-label="La tua casa vista da fuori. Tocca una stanza per entrare."></canvas></div>
+      <div class="hbtns"><button class="btn ghost" id="valleyBtn" type="button">🏞️ Valle dei Blob</button><button class="btn ghost" id="manageBtn" type="button">⚙️ Gestisci casa</button></div>
+      <section class="card"><h2 class="sec">I tuoi blob</h2><div class="rows bl" id="blobList"></div></section>
+    </div>
+    <div id="roomView" class="tabin">
+    <div class="roomhead" id="roomHead" hidden>
+      <button class="btn small ghost" id="backHouse" type="button">← Casa</button>
+      <div class="present" id="presentChips"></div>
+      <button class="btn small ghost" id="editBtn" type="button">🛋️ Arreda</button>
+    </div>
     <div class="habitat" id="habitat">
       <canvas id="scene" aria-label="La cameretta. Tocca, strofina e trascina per giocare con il tuo blob."></canvas>
       <div class="away" id="away" hidden></div>
@@ -320,6 +340,8 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
       <h2 class="sec">Diario</h2>
       <ol id="diary"></ol>
     </section>
+
+    </div>
 
     <div class="foot">
       <span id="saveNote">Salvato su questo dispositivo</span>
@@ -538,6 +560,7 @@ const STICKERS = {
   lettera:{e:'💌',n:'Posta!',how:'Leggi una lettera'}, uccellino:{e:'🐦',n:'Uccellino',how:'Salutalo alla finestra'},
   canestro:{e:'🏀',n:'Cecchino',how:'Fai 10 canestri'}, schiacciata:{e:'💥',n:'Schiacciata',how:'Lancia il blob nel canestro'},
   forziere:{e:'🧰',n:'Missione compiuta',how:'Completa le missioni del giorno'},
+  amiciblob:{e:'🤝',n:'Amici per la pelle',how:'Due blob diventano migliori amici'},
   scoiattolo:{e:'🐿️',n:'Scoiattolo',how:'Al parco'}, foglia:{e:'🍁',n:'Foglia rossa',how:'Al parco'},
   palloncino:{e:'🎈',n:'Palloncino',how:'Al parco'}, coccinella:{e:'🐞',n:'Coccinella',how:'Al parco'},
   anatroccolo:{e:'🐥',n:'Anatroccolo',how:'Al lago'}, sasso:{e:'🪨',n:'Sasso piatto',how:'Al lago'},
@@ -596,7 +619,8 @@ const MISSIONS = {
   walk:{t:'Portalo a fare una passeggiata', n:1, e:'🌳'},
   wish:{t:'Esaudisci dei desideri', n:2, e:'💭'},
   airtime:{t:'Tienilo in aria 2 secondi di fila', n:1, e:'🎈'},
-  catchBall:{t:'Afferra la palla mentre vola', n:2, e:'🫴'}
+  catchBall:{t:'Afferra la palla mentre vola', n:2, e:'🫴'},
+  social:{t:'Fai giocare insieme due blob', n:3, e:'🤝', multi:true}
 };
 const LETTERS = [
   {from:'Lumaca Ugo', e:'🐌', m:n=>`Caro ${n}, sono partito martedì per venirti a trovare. Dovrei arrivare verso marzo. Tienimi da parte un biscotto.`},
@@ -623,7 +647,8 @@ let bubbleTimer = 0, toastTimer = 0, particles = [];
 
 const GK = new Set(['coins','inv','hats','furn','stickers','daily','records','wishesDone','missions','dayMood','hoops','chests','lastEv','dex']);
 const RK = new Set(['furnOn','messes','gift','lastGift','poops','theme']);
-const roomOf = b => world ? world.rooms.find(r => r.blob === b.id) || null : null;
+const roomOf = b => world && b.at !== null && b.at !== undefined && !world.valley.includes(b.id) ? world.rooms[b.at] || null : null;
+const homeIdx = b => world ? world.rooms.findIndex(r => r.blob === b.id) : -1;
 const RDEF = {furnOn:[], messes:[], poops:0, gift:null, lastGift:0, theme:'rosa', fpos:{}, rug:'rosa'};
 function view(b){
   return new Proxy(b, {
@@ -632,7 +657,8 @@ function view(b){
   });
 }
 const nm = b => (b && b.name) || 'il piccolo';
-const houseBlobs = () => world ? world.blobs.filter(b => roomOf(b)) : [];
+const houseBlobs = () => world ? world.blobs.filter(b => !world.valley.includes(b.id) && world.rooms.some(r => r.blob === b.id)) : [];
+const presentIn = i => houseBlobs().filter(b => b.at === i && !b.walk);
 const blobById = id => world && world.blobs.find(b => b.id === id);
 
 function rollTraits(){
@@ -704,6 +730,8 @@ function migrateWorld(x){
   }
   x.blobs.forEach(migrateBlob);
   x.valley = x.valley.filter(id => x.blobs.some(b => b.id === id));
+  if (!x.bonds) x.bonds = {};
+  x.blobs.forEach(b => { const hi = x.rooms.findIndex(r => r.blob === b.id); if (x.valley.includes(b.id) || hi < 0) b.at = null; else if (b.at === undefined || b.at === null || !x.rooms[b.at]) b.at = hi; });
   x.v = 4;
   return x;
 }
@@ -819,21 +847,115 @@ function simulate(s, to){
 let evoQueue = [], eggNotice = null;
 
 /* ================= casa, stanze e valle ================= */
-function setRoom(i){
+let casaView = 'room', pendingLeave = null;
+function setRoom(i, focusId){
   if (!world) return;
   activeRoom = lim(i, 0, world.rooms.length - 1); world.activeRoom = activeRoom;
-  const r = world.rooms[activeRoom], b = r.blob && blobById(r.blob);
-  state = b ? view(b) : null;
+  const pres = presentIn(activeRoom), owner = world.rooms[activeRoom].blob;
+  const f = pres.find(b => b.id === focusId) || pres.find(b => b.id === owner) || pres[0]
+    || (blobById(owner) && blobById(owner).walk ? blobById(owner) : null);
+  state = f ? view(f) : null;
+  casaView = 'room'; pendingLeave = null;
   if (typeof resetScene === 'function') resetScene();
+  guests = []; guestsInit = false;
   trayKey = ''; diaryKey = ''; render(true);
 }
+function showHouse(){ casaView = 'house'; editMode = false; pendingLeave = null; window.scrollTo(0, 0); blobListKey = ''; render(true); }
+function pickW(opts){ const tot = opts.reduce((a, o) => a + o[1], 0); let r = Math.random() * tot; for (const [v, w] of opts){ if ((r -= w) <= 0) return v; } return opts.length ? opts[opts.length - 1][0] : null; }
+function bond(a, b, n){
+  if (!a || !b || a.id === b.id) return;
+  if (!world.bonds) world.bonds = {};
+  const k = [a.id, b.id].sort().join('|'), was = world.bonds[k] || 0; world.bonds[k] = was + n;
+  if (was < 25 && world.bonds[k] >= 25){ log(view(a), Date.now(), `${nm(a)} e ${nm(b)} sono diventati migliori amici!`); log(view(b), Date.now(), `${nm(b)} e ${nm(a)} sono diventati migliori amici!`); if (giveSticker(view(a), 'amiciblob')) toast('Nuova figurina: 🤝 Amici per la pelle!'); }
+}
+const bestFriend = b => { let best = null, bv = 0; for (const k in world.bonds){ const [x, y] = k.split('|'); if (x !== b.id && y !== b.id) continue; const o = blobById(x === b.id ? y : x); if (o && world.bonds[k] > bv){ bv = world.bonds[k]; best = o; } } return bv >= 8 ? best : null; };
+let lastSocial = {};
+function socialFx(a, b){
+  if (!a || !b) return;
+  const k = [a.id, b.id].sort().join('|'), now = Date.now();
+  if (now - (lastSocial[k] || 0) < 6000) return; lastSocial[k] = now;
+  a.fun = clamp(a.fun + 3); b.fun = clamp(b.fun + 3); a.trust = clamp(a.trust + .5); b.trust = clamp(b.trust + .5);
+  bond(a, b, 1); mission('social'); saveSoon();
+}
+function applyMove(b, to, isVisit){
+  const from = b.at, now = Date.now(); b.at = to;
+  const room = world.rooms[to];
+  if (isVisit){
+    b.visit = {to, until: now + rnd(4, 12) * MIN};
+    const there = houseBlobs().filter(x => x.at === to && x.id !== b.id && x.stage !== 'egg');
+    log(view(b), now, there.length ? `${nm(b)} è andato a trovare ${nm(there[0])} in ${room.name}.` : `${nm(b)} è andato a curiosare in ${room.name}.`);
+  } else b.visit = null;
+  saveSoon();
+  void from;
+}
+function moveBlob(b, to, isVisit){
+  if (to < 0 || to === b.at) { if (!isVisit) b.visit = null; return; }
+  const focused = state && state.id === b.id && casaView === 'room' && tab === 'casa' && !document.hidden;
+  if (focused){
+    if (Date.now() - lastTouch < 45000 || !pet.ground || pet.held || pendingLeave || !$('sheet').hidden){ if (b.visit) b.visit.until = Date.now() + 2*MIN; else b.nextVisitAt = Date.now() + 3*MIN; return; }
+    pendingLeave = {id: b.id, to, isVisit}; pet.beh = {type:'leave', until: Date.now() + 15000};
+    chat(isVisit ? pick(['Vado a fare un giro!', 'Torno subito!', 'Vado a trovare gli altri!']) : 'Torno nella mia stanza!', 1);
+    return;
+  }
+  applyMove(b, to, isVisit);
+}
+function visits(now){
+  if (!world || world.rooms.length < 2) return;
+  const hb = houseBlobs();
+  for (const b of hb){
+    const busy = b.stage === 'egg' || b.walk || b.sleeping || b.sick || !b.name;
+    if (b.visit){ if (now > b.visit.until && !b.walk) moveBlob(b, homeIdx(b), false); continue; }
+    if (busy) continue;
+    if (b.at !== homeIdx(b) && homeIdx(b) >= 0){ moveBlob(b, homeIdx(b), false); continue; }
+    if (now < (b.nextVisitAt || 0)){ continue; }
+    b.nextVisitAt = now + rnd(6, 16) * MIN;
+    if (Math.random() < .6){
+      const opts = [];
+      world.rooms.forEach((r, i) => { if (i === b.at) return; const n = hb.filter(x => x.at === i && x.stage !== 'egg' && !x.walk).length; const toys = r.furnOn.filter(f => FURN[f] && FURN[f].special).length; opts.push([i, 1 + n * 3 + toys * .4]); });
+      const i = pickW(opts); if (i !== null && i !== undefined) moveBlob(b, i, true);
+    }
+  }
+  // incontri nelle stanze che non stai guardando
+  world.rooms.forEach((r, i) => {
+    if (casaView === 'room' && i === activeRoom && tab === 'casa') return;
+    const here = hb.filter(x => x.at === i && x.stage !== 'egg' && !x.sleeping && !x.walk);
+    if (here.length >= 2 && Math.random() < 1 / 150){
+      const [a, c] = here.sort(() => Math.random() - .5);
+      const k = [a.id, c.id].sort().join('|');
+      if (now - (lastSocial[k] || 0) > 20 * MIN){ socialFx(a, c); lastSocial[k] = now; log(view(a), now, `${nm(a)} e ${nm(c)} hanno giocato insieme in ${r.name}.`); }
+    }
+  });
+}
+function blobPlace(b){
+  if (b.walk) return `A passeggio ${PLACES[b.walk.place].dove}`;
+  const r = world.rooms[b.at]; if (!r) return 'Nella Valle';
+  return b.visit ? `In visita: ${r.name}` : `In ${r.name}`;
+}
+function blobStatus(b){
+  if (b.stage === 'egg') return '🥚';
+  const st = [];
+  if (b.sick) st.push('🤒'); if (b.sleeping) st.push('💤'); if (b.wish) st.push(b.wish.e);
+  if (b.hunger < 30) st.push('🍽️'); if (b.thirst < 30) st.push('💧'); if (b.hygiene < 30) st.push('🛁'); if (b.fun < 30) st.push('😞');
+  return st.join('') || '😊';
+}
+let blobListKey = '';
+function renderBlobList(){
+  const hb = houseBlobs();
+  const key = hb.map(b => b.id + b.at + blobStatus(b) + (b.name || '') + b.stage + (b.walk ? 1 : 0) + (b.visit ? 1 : 0)).join(',');
+  if (key === blobListKey) return; blobListKey = key;
+  $('blobList').innerHTML = hb.map(b => { const bf = b.stage !== 'egg' ? bestFriend(b) : null;
+    return `<div class="rowi"><div class="em">${blobEmoji(b)}</div><div><b>${esc(b.name || 'Senza nome')}</b><small class="where">${blobPlace(b)}${bf ? ` · amico di ${esc(nm(bf))}` : ''}</small><span class="st">${blobStatus(b)}</span></div>
+    <button class="btn small" data-goblob="${b.id}" type="button">${b.walk ? 'Vedi' : 'Vai'}</button></div>`; }).join('')
+    + (world.valley.length ? `<p class="shopnote" style="margin-top:4px">${world.valley.length} ${world.valley.length === 1 ? 'blob riposa' : 'blob riposano'} nella Valle.</p>` : '');
+}
+
 function canLay(b, now){ return b.stage === 'adult' && b.adultAt && now - b.adultAt > 3*HOUR && b.trust >= 50 && now - (b.lastEgg || 0) > 20*HOUR && !b.walk && !b.sleeping && b.health > 50; }
 function layEgg(p){
   const now = Date.now(); p.lastEgg = now;
   const egg = newBlob('', p); world.blobs.push(egg);
   let i = world.rooms.findIndex(r => !r.blob);
   if (i < 0 && world.rooms.length < 2){ world.rooms.push(newRoom(world.rooms.length)); i = world.rooms.length - 1; }
-  if (i >= 0) world.rooms[i].blob = egg.id; else world.valley.push(egg.id);
+  if (i >= 0){ world.rooms[i].blob = egg.id; egg.at = i; } else { world.valley.push(egg.id); egg.at = null; }
   log(view(p), now, `${p.name} ha deposto un uovo! ${i >= 0 ? 'È nella stanza ' + world.rooms[i].name + '.' : 'In casa non c\'era posto: è al sicuro nella Valle dei Blob.'}`);
   eggNotice = {room: i, parent: p.name, shiny: egg.shiny};
   save();
@@ -842,7 +964,7 @@ function freeRoom(){ return world.rooms.findIndex(r => !r.blob); }
 function toValley(i){
   const r = world.rooms[i], b = blobById(r.blob); if (!b) return;
   if (b.walk){ toast(`${nm(b)} è a passeggio: aspetta che torni.`); return; }
-  r.blob = null; world.valley.push(b.id); b.wish = null;
+  r.blob = null; world.valley.push(b.id); b.wish = null; b.at = null; b.visit = null;
   log(view(b), Date.now(), `${nm(b)} è andato a vivere nella Valle dei Blob.`);
   if (i === activeRoom) setRoom(i);
   save(); openHouse(); toast(`${nm(b)} è partito per la Valle`);
@@ -850,7 +972,7 @@ function toValley(i){
 function fromValley(id){
   const i = freeRoom(); if (i < 0){ toast('Serve una stanza libera: compra una stanza o manda qualcuno nella Valle.'); return; }
   const b = blobById(id); world.valley = world.valley.filter(x => x !== id);
-  world.rooms[i].blob = id; b.last = Date.now(); if (b.stage === 'egg') b.hatchAt = Math.max(b.hatchAt, Date.now() + 2*MIN);
+  world.rooms[i].blob = id; b.at = i; b.visit = null; b.last = Date.now(); if (b.stage === 'egg') b.hatchAt = Math.max(b.hatchAt, Date.now() + 2*MIN);
   b.nextWishAt = Date.now() + 3*MIN;
   log(view(b), Date.now(), `${nm(b)} è tornato a casa dalla Valle.`);
   save(); closeSheet(); setRoom(i); say(`Bentornato ${nm(b)}!`);
@@ -859,7 +981,7 @@ function buyRoom(){
   const n = world.rooms.length; if (n >= 4) return;
   const p = ROOM_PRICES[n];
   if (!rich() && world.coins < p){ toast(`Ti mancano ${p - world.coins} stelline.`); return; }
-  if (!rich()) world.coins -= p; world.rooms.push(newRoom(n)); sfx.coin(); save(); render(true); openHouse(); toast(`Nuova stanza: ${world.rooms[n].name}!`);
+  if (!rich()) world.coins -= p; world.rooms.push(newRoom(n)); sfx.coin(); save(); render(true); if (!$('sheet').hidden) openHouse(); toast(`Nuova stanza: ${world.rooms[n].name}!`);
 }
 function setTheme(i, th){
   const r = world.rooms[i]; if (r.theme === th) return;
@@ -890,20 +1012,42 @@ function openHouse(){
     else if (b.dataset.th) setTheme(activeRoom, b.dataset.th);
   }));
 }
-function renderRooms(){
-  const bar = $('roomBar'); bar.hidden = !world;
+let presentKey = '';
+function renderRoomHead(){
+  const rh = $('roomHead'); rh.hidden = !world;
   if (!world) return;
-  bar.innerHTML = world.rooms.map((r, i) => {
-    const b = r.blob && blobById(r.blob);
-    const alert = b && b.stage !== 'egg' && i !== activeRoom && (b.sick || b.wish || r.poops || core(b) < 40 || (b.walk && b.walk.back));
-    return `<button class="room${alert ? ' alert' : ''}" data-r="${i}" type="button" aria-pressed="${i === activeRoom}"><span class="e">${b ? blobEmoji(b) : '🚪'}</span>${esc(b ? (b.name || 'Uovo') : r.name)}</button>`;
-  }).join('') + `<button class="room house" data-edit type="button" aria-pressed="${editMode}"><span class="e">${editMode ? '✅' : '🛋️'}</span>${editMode ? 'Fatto' : 'Arreda'}</button><button class="room house" data-house type="button"><span class="e">🏡</span>Casa${world.valley.length ? ' · ' + world.valley.length + ' in Valle' : ''}</button>`;
+  const pres = presentIn(activeRoom);
+  const key = pres.map(b => b.id + blobEmoji(b) + (b.name || '')).join() + (state ? state.id : '') + editMode;
+  $('editBtn').textContent = editMode ? '✅ Fatto' : '🛋️ Arreda';
+  $('editBtn').setAttribute('aria-pressed', editMode ? 'true' : 'false');
+  if (key === presentKey) return; presentKey = key;
+  $('presentChips').innerHTML = pres.length > 1 ? pres.map(b => `<button class="room" data-focus="${b.id}" type="button" aria-pressed="${!!state && state.id === b.id}"><span class="e">${blobEmoji(b)}</span>${esc(b.name || 'Uovo')}</button>`).join('')
+    : `<span class="shopnote" style="align-self:center;white-space:nowrap">${esc(world.rooms[activeRoom].name)}</span>`;
 }
-document.getElementById('roomBar').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  if (b.hasAttribute('data-house')) openHouse();
-  else if (b.hasAttribute('data-edit')){ editMode = !editMode; dragF = null; if (editMode){ const r = curRoom(); toast(r && r.furnOn.length ? 'Trascina i mobili per spostarli. Toccane uno per toglierlo.' : 'Questa stanza non ha mobili: comprali nel negozio, reparto Arredo.', 3200); } render(true); }
-  else { editMode = false; setRoom(+b.dataset.r); }
+$('backHouse').addEventListener('click', showHouse);
+$('editBtn').addEventListener('click', () => {
+  editMode = !editMode; dragF = null;
+  if (editMode){ const r = curRoom(); toast(r && r.furnOn.length ? 'Trascina i mobili per spostarli. Toccane uno per toglierlo.' : 'Questa stanza non ha mobili: comprali nel negozio, reparto Arredo.', 3200); }
+  render(true);
+});
+$('presentChips').addEventListener('click', e => { const b = e.target.closest('[data-focus]'); if (!b || (state && b.dataset.focus === state.id)) return; focusBlob(b.dataset.focus); });
+$('valleyBtn').addEventListener('click', openHouse);
+$('manageBtn').addEventListener('click', openHouse);
+$('blobList').addEventListener('click', e => { const b = e.target.closest('[data-goblob]'); if (!b) return; const x = blobById(b.dataset.goblob); if (!x) return; const i = x.walk ? homeIdx(x) : x.at; setRoom(i < 0 ? 0 : i, x.id); });
+$('houseCv').addEventListener('click', e => {
+  if (!world) return;
+  const cvh = $('houseCv'), r = cvh.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const L = houseLayout(r.width, r.height);
+  for (let i = 0; i < 4; i++){ const q = L.rooms[i]; if (x < q.x || x > q.x + q.w || y < q.y || y > q.y + q.h) continue;
+    if (i < world.rooms.length){
+      const hit = presentIn(i).find(b => { const he = houseEnts[b.id]; return he && Math.abs(x - (q.x + he.x * q.w)) < q.h * .16 && y > q.y + q.h * .45; });
+      setRoom(i, hit ? hit.id : undefined); return;
+    }
+    if (i === world.rooms.length){ const p = ROOM_PRICES[i];
+      openSheet('Nuova stanza', `<p class="shopnote">Una stanza in più per far crescere altri blob, ospitare le visite e arredare.</p><div class="sheet-actions"><button class="btn ghost" data-close type="button">Non ora</button><button class="btn" id="buyR" type="button">${p ? STAR + p : 'Gratis'}</button></div>`,
+        b => { b.querySelector('#buyR').onclick = () => { closeSheet(); buyRoom(); closeSheet(); }; }); }
+    return;
+  }
 });
 function showEvo(id){
   const b = blobById(id); if (!b) return;
@@ -940,6 +1084,7 @@ function adopt(rec){
     const away = ab ? now - ab.last : 0;
     for (const b of houseBlobs()) simulate(view(b), now);
     setRoom(world.activeRoom || 0);
+    if (houseBlobs().length >= 2 || world.rooms.length >= 2) casaView = 'house';
     if (state && away > 20*MIN && state.stage !== 'egg' && !state.walk && !state.sleeping) welcome = true;
   } else { state = null; render(true); }
 }
@@ -994,7 +1139,7 @@ function trustHint(s){
   return 'Siete inseparabili.';
 }
 function say(msg, ms = 2600){
-  if (tab !== 'casa' || !$('sheet').hidden || !$('gameOverlay').hidden) return toast(msg, ms);
+  if (tab !== 'casa' || casaView !== 'room' || !$('sheet').hidden || !$('gameOverlay').hidden) return toast(msg, ms);
   const b = $('bubble'); b.textContent = msg; b.classList.add('show');
   clearTimeout(bubbleTimer); bubbleTimer = setTimeout(() => b.classList.remove('show'), ms);
 }
@@ -1117,7 +1262,8 @@ function ensureDay(s){
   const today = dayKey(Date.now());
   if (!s.dayMood || s.dayMood.day !== today){ s.dayMood = {day: today, id: pick(Object.keys(DAYMOODS))}; missionDirty = true; }
   if (!s.missions || s.missions.day !== today){
-    const pool = Object.keys(MISSIONS).filter(id => !MISSIONS[id].lv || s.level >= MISSIONS[id].lv).sort(() => Math.random() - .5);
+    const many = houseBlobs().filter(b => b.stage !== 'egg').length >= 2;
+    const pool = Object.keys(MISSIONS).filter(id => (!MISSIONS[id].lv || s.level >= MISSIONS[id].lv) && (!MISSIONS[id].multi || many)).sort(() => Math.random() - .5);
     s.missions = {day: today, list: pool.slice(0, 3).map(id => ({id, p:0, done:false})), sets:{}, chest:false};
     missionDirty = true;
   }
@@ -1181,6 +1327,7 @@ function tick(){
   const hb = houseBlobs();
   for (const b of hb) if (simulate(view(b), now)) ch = true;
   for (const b of hb) if (canLay(b, now)){ layEgg(b); ch = true; }
+  visits(now);
   const s = state;
   const anyone = hb.find(b => b.stage !== 'egg');
   if (anyone) ensureDay(s && s.stage !== 'egg' ? s : view(anyone));
@@ -1299,7 +1446,9 @@ function render(full){
     $('namerText').textContent = s.stage === 'egg' ? 'Accarezza l\'uovo per scaldarlo: si schiude prima.' : 'È appena nato e aspetta un nome!';
     $('importLink').hidden = true;
   } else { $('importLink').hidden = !!world; }
-  renderRooms();
+  renderRoomHead();
+  $('houseView').hidden = casaView !== 'house' || !world;
+  $('roomView').hidden = casaView === 'house' && !!world;
   $('petName').textContent = s ? (s.name || (s.stage === 'egg' ? 'Un uovo nuovo' : 'Senza nome')) : world ? world.rooms[activeRoom].name : 'Un uovo misterioso';
   $('stageChip').textContent = emptyRoom ? 'Stanza libera' : stageName(s);
   $('coinVal').textContent = rich() ? '∞' : world ? world.coins : 0;
@@ -1315,13 +1464,23 @@ function render(full){
   $('moodText').textContent = mood(s).t;
   const dm = DM(); $('moodChip').hidden = !dm || egg; if (dm) $('moodChip').textContent = `${dm.e} ${dm.n}`;
   if (missionDirty || full) renderMissions();
+  if (casaView === 'house' && world){
+    const hb = houseBlobs();
+    $('petName').textContent = 'La tua casa';
+    $('stageChip').textContent = `${hb.length} ${hb.length === 1 ? 'blob' : 'blob'} in casa`;
+    $('ageText').textContent = `${world.rooms.length} ${world.rooms.length === 1 ? 'stanza' : 'stanze'}${world.valley.length ? ' · ' + world.valley.length + ' nella Valle' : ''}`;
+    $('moodChip').hidden = !dm;
+    if (full) blobListKey = '';
+    renderBlobList();
+  }
   $('hintText').textContent = editMode ? 'Modalità Arreda: trascina i mobili' : !s ? '' : egg ? 'Accarezza l\'uovo per scaldarlo' : s.walk ? 'È fuori casa' : s.sleeping ? 'Dorme: accarezzalo piano' : HINTS[tool];
 
   const aw = $('away');
   if (emptyRoom){
     aw.hidden = false;
-    aw.innerHTML = `Questa stanza è libera.<small>Qui può schiudersi un uovo nuovo, o puoi riportare un blob dalla Valle.</small><button class="btn small" id="awHouse" type="button" style="margin-top:8px">Apri la casa</button>`;
-    $('awHouse').onclick = openHouse;
+    const owner = blobById(world.rooms[activeRoom].blob);
+    aw.innerHTML = owner ? `${esc(nm(owner))} non è in camera.<small>${blobPlace(owner)}. Tornerà presto!</small>` : `Questa stanza è libera.<small>Qui può schiudersi un uovo nuovo, o puoi riportare un blob dalla Valle.</small><button class="btn small" id="awHouse" type="button" style="margin-top:8px">Apri la casa</button>`;
+    if ($('awHouse')) $('awHouse').onclick = openHouse;
   } else if (s && s.walk){
     const P = PLACES[s.walk.place];
     aw.hidden = false;
@@ -1412,7 +1571,7 @@ function setTab(t){
   window.scrollTo(0, 0);
   render(true);
 }
-document.querySelector('.tabbar').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTab(b.dataset.tab); });
+document.querySelector('.tabbar').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.tab === 'casa' && tab === 'casa' && world && casaView === 'room' && world.rooms.length > 1){ showHouse(); return; } setTab(b.dataset.tab); });
 function setTool(t){ tool = t; trayKey = ''; render(); }
 
 /* ================= negozio ================= */
@@ -1690,7 +1849,7 @@ $('namer').addEventListener('submit', e => {
   const n = ($('nameInput').value.trim() || pick(['Mochi','Bloppo','Pallotto','Gommina','Budy','Fiocco'])).slice(0, 14);
   $('nameInput').value = '';
   if (!world){
-    world = newWorld(); const b = newBlob(n); world.blobs.push(b); world.rooms[0].blob = b.id;
+    world = newWorld(); const b = newBlob(n); b.at = 0; world.blobs.push(b); world.rooms[0].blob = b.id;
     setRoom(0); save(); say(`Ciao ${n}! Accarezzalo per scaldarlo…`);
   } else if (state && !state.name){
     state.name = n; log(state, Date.now(), `Si chiama ${n}!`); save(); render(true); say(`Ciao ${n}!`);
@@ -2082,6 +2241,7 @@ function tap(p){
       save(); return;
     }
   }
+  for (const g of guests){ const gb = blobById(g.id); if (!gb || g.leaving) continue; if (Math.hypot(p.x - g.x, p.y - g.y) < blobR(gb) * 1.05){ focusBlob(g.id); return; } }
   if (hitPet(p)){
     if (s.stage === 'egg'){ pet.wob = 1; sfx.boing(); say(pick(['Toc toc!','Qualcosa si muove là dentro…','Crrr…'])); return; }
     squish(.35); sfx.boing();
@@ -2444,6 +2604,7 @@ function choose(){
   if (s.poops > 0) add({type:'stinky'}, 2);
   if (now - lastTouch > 30000 && s.trust > 45) add({type:'attention'}, 3);
   if (s.furnOn.includes('orso')) add({type:'bear'}, 1.2);
+  if (guests.some(g => !g.leaving)) add({type:'social'}, 3);
   if (hasFurn('trampolino')) add({type:'tramp'}, 2.2);
   if (hasFurn('tenda')) add({type:'hide'}, 1.3);
   if (hasFurn('piscina')) add({type:'pit'}, 1.6);
@@ -2482,7 +2643,27 @@ function brain(dt){
   const b = pet.beh;
   b.t = (b.t || 0) + dt;
   switch (b.type){
-    case 'enter': if (walkTo(W * .5, dt)){ setExpr('happy', 1.5); chat('Sono a casa!', 1); b.done = true; } break;
+    case 'enter': if (walkTo(W * .5, dt)){ setExpr('happy', 1.5); chat(state.visit ? pick(['Permesso! Si può?', 'Eccomi qua!']) : 'Sono a casa!', 1); b.done = true; } break;
+    case 'leave':
+      pet.look = null; walkTo(W + R * 1.6, dt, 1.2);
+      if (pet.x > W + R * 1.1){ const pl = pendingLeave, raw = blobById(state.id); pendingLeave = null;
+        if (pl && raw){ applyMove(raw, pl.to, pl.isVisit); toast(`${nm(raw)} è andato in ${world.rooms[pl.to].name}`); }
+        state = null; const pres = presentIn(activeRoom); if (pres.length){ const nb = pres[0], g = guests.find(x => x.id === nb.id); state = view(nb); geo();
+          if (g){ Object.assign(pet, {x: g.x, ground:true, vx:0, vy:0, beh:null, anim:null}); guests = guests.filter(x => x !== g); } else { pet.x = W * .5; pet.beh = null; } pet.y = groundY(); }
+        presentKey = ''; trayKey = ''; diaryKey = ''; render(true); }
+      break;
+    case 'social': {
+      const g = guests.find(x => !x.leaving && blobById(x.id) && blobById(x.id).stage !== 'egg' && !blobById(x.id).sleeping);
+      if (!g){ b.done = true; break; }
+      const gb = blobById(g.id), rg = blobR(gb);
+      if (walkTo(lim(g.x + (pet.x < g.x ? -1 : 1) * (R + rg) * .8, R, W - R), dt, 1.2)){
+        pet.look = {x: g.x, y: g.y}; g.look = {x: pet.x, y: pet.y};
+        if (!b.act){ b.act = pick(['hug', 'jump', 'talk']); b.until = Date.now() + 2600;
+          if (b.act === 'hug'){ setExpr('love', 2.5); g.expr = 'love'; g.exprUntil = performance.now() + 2500; burst('heart', 6, (g.x + pet.x) / 2, pet.y - R * .3); sfx.purr(); chat(pick([`Ti voglio bene, ${gb.name}!`, `Abbraccio per ${gb.name}!`]), .8); }
+          else if (b.act === 'jump'){ pet.vy = -H * .9; pet.ground = false; if (g.ground){ g.vy = -H * .9; g.ground = false; } sfx.boing(); chat('Salto insieme!', .7); }
+          else { chat(pick([`${gb.name}, giochiamo?`, `Sai che ${gb.name} è simpaticissimo?`, `Ehi ${gb.name}!`]), .9); g.bub = {t: pick(['Sì!', 'Ok!', 'Hihi!', '♡']), until: Date.now() + 1500}; }
+          socialFx(blobById(state.id), gb); } }
+      break; }
     case 'welcome':
       if (walkTo(W * .5, dt, 1.4) && !b.jumped){ b.jumped = true; pet.vy = -H * 1.2; pet.ground = false; sfx.boing(); setExpr('happy', 2); say(`${s.name} è felicissimo di rivederti!`, 2400); burst('heart', 8); }
       break;
@@ -2689,7 +2870,7 @@ function physics(dt){
     }
   } else {
     pet.y = groundY();
-    if (!(pet.beh && pet.beh.type === 'enter')) pet.x = lim(pet.x, R, W - R);
+    if (!(pet.beh && (pet.beh.type === 'enter' || pet.beh.type === 'leave'))) pet.x = lim(pet.x, R, W - R);
   }
   // palla
   if (!ball.held && hasFurn('palla')){
@@ -2937,6 +3118,213 @@ function furnBox(id){
   return fposPx(id);
 }
 
+/* ---------- ospiti: gli altri blob presenti nella stanza ---------- */
+let guests = [], guestsInit = false;
+function mkGuest(id, entering){
+  const b = blobById(id), r = blobR(b);
+  return {id, x: entering ? W + r * 1.2 : rf(.15, .85) * W, y: FLOOR - r * .88 * .78, vx:0, vy:0, ground:true, rot:0, vr:0, sq:1, sqv:0, dir:-1,
+    hop:0, wob:0, look:null, expr:null, exprUntil:0, anim:null, held:false, beh: entering ? {type:'enter', until: Date.now() + 8000} : null, sink:0, bub:null, leaving:false};
+}
+function syncGuests(){
+  if (!world) return;
+  const pres = presentIn(activeRoom);
+  if (!state && pres.length){
+    const b = pres[0]; state = view(b); geo();
+    Object.assign(pet, {x: W + R, y: groundY(), vx:0, vy:0, ground:true, rot:0, held:false, anim:null, expr:null, look:null, sink:0});
+    pet.beh = {type:'enter', until: Date.now() + 8000}; guests = guests.filter(g => g.id !== b.id); presentKey = ''; render(true);
+  }
+  for (const b of pres){ if (state && b.id === state.id) continue; if (!guests.find(g => g.id === b.id)) guests.push(mkGuest(b.id, guestsInit)); }
+  for (const g of guests) if (!pres.find(b => b.id === g.id) || (state && g.id === state.id)) g.leaving = true;
+  guestsInit = true;
+}
+function focusBlob(id){
+  const g = guests.find(x => x.id === id), b = blobById(id); if (!b) return;
+  if (!g){ setRoom(activeRoom, id); return; }
+  const old = state ? blobById(state.id) : null;
+  guests = guests.filter(x => x !== g);
+  if (old && old.at === activeRoom){ const og = mkGuest(old.id, false); og.x = pet.x; guests.push(og); }
+  state = view(b); geo();
+  Object.assign(pet, {x: g.x, vx:0, vy:0, ground:true, rot:0, vr:0, sq:1, sqv:0, held:false, beh:null, anim:null, expr:null, look:null, hop:0, wob:0, airFrom:0, sink:0, sinkT:0});
+  pet.y = groundY(); editMode = false; trayKey = ''; diaryKey = ''; presentKey = '';
+  render(true); say(`${nm(b)}!`, 1200);
+}
+const petFree = () => state && petVisible() && awake() && !pet.held;
+function walkG(g, tx, dt, sp = 1){ const b = blobById(g.id), r = blobR(b), dx = tx - g.x; if (Math.abs(dx) < 4){ g.hop = 0; return true; } g.dir = Math.sign(dx); g.x += Math.sign(dx) * Math.min(Math.abs(dx), r * 2.4 * sp * dt); g.hop += dt * 9; return false; }
+function guestChoose(g, b){
+  const opts = [[{type:'wander', tx: rf(.1, .9) * W}, 3], [{type:'idle'}, 1.5]];
+  if (petFree() && state.stage !== 'egg'){ opts.push([{type:'hug'}, 2], [{type:'tag'}, 1.5], [{type:'jump'}, 1.5], [{type:'talk'}, 2]); if (hasFurn('palla')) opts.push([{type:'kick'}, 1.5]); }
+  if (guests.filter(x => !x.leaving && x !== g).length) opts.push([{type:'buddy'}, 1.5]);
+  return Object.assign({until: Date.now() + rnd(3000, 6500)}, pickW(opts));
+}
+function updateGuests(dt){
+  const now = Date.now(), g0 = G();
+  for (const g of guests){
+    const b = blobById(g.id); if (!b){ g.dead = true; continue; }
+    const r = blobR(b), gY = FLOOR - r * .88 * .78;
+    g.sqv += ((1 - g.sq) * 220 - g.sqv * 13) * dt; g.sq = lim(g.sq + g.sqv * dt, .55, 1.4); g.wob = Math.max(0, g.wob - dt * 1.6);
+    if (g.leaving){ walkG(g, W + r * 1.6, dt, 1.3); if (g.x > W + r * 1.2) g.dead = true; continue; }
+    if (b.stage === 'egg'){ g.y = gY; continue; }
+    if (!g.ground){
+      g.vy += g0 * dt; g.x += g.vx * dt; g.y += g.vy * dt; g.x = lim(g.x, r, W - r);
+      if (g.y >= gY){ g.y = gY; if (g.vy > 420){ g.vy = -g.vy * .35; g.sqv -= 3; } else { g.ground = true; g.vy = 0; g.vx = 0; } }
+      continue;
+    }
+    g.y = gY;
+    if (b.sleeping){ g.hop = 0; continue; }
+    if (!g.beh || now > g.beh.until || g.beh.done) g.beh = guestChoose(g, b);
+    const B = g.beh, me = state ? blobById(state.id) : null;
+    switch (B.type){
+      case 'enter':
+        if (!B.tx) B.tx = rf(.3, .75) * W;
+        if (walkG(g, B.tx, dt)){ B.done = true; g.bub = {t: pick(['Ciao!','Eccomi!','Permesso!','Si può?']), until: now + 1600};
+          if (petFree()){ setExpr('happy', 1.5); chat(`Ciao ${nm(b)}!`, .9); } }
+        break;
+      case 'wander': if (walkG(g, B.tx, dt, B.fast ? 1.8 : 1)) B.type = 'idle'; break;
+      case 'idle': g.hop = 0; break;
+      case 'hug': case 'talk': {
+        if (!petFree()){ B.done = true; break; }
+        const side = g.x < pet.x ? -1 : 1, tx = lim(pet.x + side * (R + r) * (B.type === 'hug' ? .78 : 1.15), r, W - r);
+        if (walkG(g, tx, dt, 1.2)){ g.look = {x: pet.x, y: pet.y}; pet.look = {x: g.x, y: g.y};
+          if (!B.did){ B.did = 1; B.until = now + 2600;
+            if (B.type === 'hug'){ g.expr = 'love'; g.exprUntil = performance.now() + 2500; setExpr('love', 2.5); burst('heart', 6, (g.x + pet.x) / 2, pet.y - R * .3); sfx.purr(); g.bub = {t: '♡', until: now + 1800}; }
+            else { const topic = pick(['🍓','⚽','🌈','🎵','🦋','🍦','⭐','🏀']); g.bub = {t: topic + '?', until: now + 1500}; setTimeout(() => { if (state) chat(pick([`${topic}! Sì!`, `Mmh, ${topic}…`, `${topic} è il mio preferito!`]), 1); }, 1300); }
+            socialFx(me, b); } }
+        break; }
+      case 'tag': {
+        if (!petFree()){ B.done = true; break; }
+        if (walkG(g, pet.x + (g.x < pet.x ? -1 : 1) * (R + r) * .7, dt, 1.9) && !B.did){
+          B.did = 1; g.bub = {t: 'Preso!', until: now + 1300}; if (pet.ground){ pet.vy = -H * .8; pet.ground = false; sfx.boing(); }
+          chat(pick(['Ce l\'ho io!', 'Ora ti prendo!']), 1); socialFx(me, b);
+          g.beh = {type:'wander', tx: pet.x < W / 2 ? W * .88 : W * .12, until: now + 2600, fast: 1};
+        }
+        break; }
+      case 'jump':
+        if (!B.n) B.n = 0;
+        if (B.n < 3 && g.ground){ B.n++; g.vy = -H * rf(.8, 1.05); g.ground = false; sfx.boing(); if (B.n === 1){ g.bub = {t: 'Salta con me!', until: now + 1400}; socialFx(me, b); }
+          if (petFree() && pet.ground){ pet.vy = -H * .85; pet.ground = false; } }
+        else if (B.n >= 3) B.done = true;
+        break;
+      case 'kick':
+        if (!hasFurn('palla') || ball.held){ B.done = true; break; }
+        if (walkG(g, ball.x - Math.sign((state ? pet.x : W / 2) - ball.x || 1) * (r + ball.r) * .8, dt, 1.4) && ball.y > FLOOR - ball.r * 3){
+          ball.vx = Math.sign((state ? pet.x : W / 2) - ball.x || 1) * rf(300, 480); ball.vy = -rf(200, 380); ball.ground = false; ball.by = 'blob'; sfx.pop(); g.sqv -= 2;
+          g.bub = {t: 'Passaggio!', until: now + 1200}; socialFx(me, b); B.done = true; }
+        break;
+      case 'buddy': {
+        const o = guests.find(x => !x.leaving && x !== g && blobById(x.id) && blobById(x.id).stage !== 'egg');
+        if (!o){ B.done = true; break; }
+        const ro = blobR(blobById(o.id));
+        if (walkG(g, o.x + (g.x < o.x ? -1 : 1) * (r + ro) * .8, dt) && !B.did){ B.did = 1; g.expr = 'love'; g.exprUntil = performance.now() + 2200; o.expr = 'love'; o.exprUntil = performance.now() + 2200; burst('heart', 4, (g.x + o.x) / 2, g.y - r * .4); socialFx(b, blobById(o.id)); B.until = now + 2400; }
+        break; }
+    }
+  }
+  guests = guests.filter(g => !g.dead);
+}
+function drawGuests(t){
+  for (const g of guests){
+    const b = blobById(g.id); if (!b) continue;
+    drawPet(t, view(b), g, true);
+    const r = blobR(b);
+    if (g.bub && Date.now() < g.bub.until){
+      ctx.font = `800 ${Math.max(12, Math.round(r * .32))}px "M PLUS Rounded 1c", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const tw = ctx.measureText(g.bub.t).width + 16, bx = lim(g.x, tw / 2 + 4, W - tw / 2 - 4), by = Math.max(16, g.y - r * 1.35);
+      ctx.fillStyle = tokens.panel; roundRect(bx - tw / 2, by - 13, tw, 26, 12); ctx.fill(); ctx.fillStyle = tokens.ink; ctx.fillText(g.bub.t, bx, by + 1);
+    }
+    if (b.name){ ctx.font = `800 ${Math.max(10, Math.round(r * .2))}px "M PLUS Rounded 1c", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = tokens.ink; ctx.globalAlpha = .55; ctx.fillText(b.name, g.x, FLOOR + H * .045); ctx.globalAlpha = 1; }
+  }
+}
+
+/* ---------- vista della casa ---------- */
+let houseEnts = {}, lastHouseT = 0;
+function houseLayout(w, h){
+  const x0 = w * .06, bw = w * .88, roofH = h * .16, y0 = h * .2, bh = h * .72, pad = w * .025, gap = w * .025;
+  const rw = (bw - pad * 2 - gap) / 2, rhh = (bh - pad * 2 - gap) / 2;
+  const top = y0 + pad, bot = y0 + pad + rhh + gap, lx = x0 + pad, rx2 = x0 + pad + rw + gap;
+  return {x0, y0, bw, bh, roofH, rooms: [{x: lx, y: bot, w: rw, h: rhh}, {x: rx2, y: bot, w: rw, h: rhh}, {x: lx, y: top, w: rw, h: rhh}, {x: rx2, y: top, w: rw, h: rhh}]};
+}
+function roomColorsFor(room){
+  const th = room ? room.theme : 'rosa';
+  if (th === 'rosa') return {wall: tokens.wall, wall2: tokens['wall-2'], floor: tokens.floor, rug: tokens.rug};
+  const h = THEMES[th].h, dark = document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  return dark ? {wall:`hsl(${h},22%,22%)`, wall2:`hsl(${h},22%,27%)`, floor:`hsl(${h},20%,29%)`, rug:`hsl(${h},28%,36%)`}
+              : {wall:`hsl(${h},70%,92%)`, wall2:`hsl(${h},80%,96%)`, floor:`hsl(${h},55%,86%)`, rug:`hsl(${h},75%,80%)`};
+}
+function drawBlobMini(c, x, y, r, b, t){
+  if (b.stage === 'egg'){ c.fillStyle = '#fff3e6'; c.beginPath(); c.ellipse(x, y - r * .1, r * .62, r * .8, Math.sin(t * 3) * .06, 0, 7); c.fill(); c.fillStyle = '#ffb3d1'; for (const [dx, dy] of [[-.25,-.3],[.2,-.5],[.25,.05],[-.15,.25]]){ c.beginPath(); c.arc(x + dx * r, y - r * .1 + dy * r, r * .1, 0, 7); c.fill(); } return; }
+  const pal = palFor(b), ry = r * .88, F = FORMS[kindOf(b)] || {}, ink = F.dark ? '#fff6d8' : '#3b2842';
+  c.save(); c.translate(x, y);
+  if (b.back) drawAcc(c, b.back, r, ry, t, pal);
+  const g = c.createRadialGradient(-r * .35, -ry * .45, r * .1, 0, 0, r * 1.15); g.addColorStop(0, pal.a); g.addColorStop(1, pal.b);
+  c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, r, ry, 0, 0, 7); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.ellipse(-r * .4, -ry * .5, r * .14, r * .08, -.6, 0, 7); c.fill();
+  c.fillStyle = c.strokeStyle = ink; c.lineWidth = Math.max(1.2, r * .07); c.lineCap = 'round';
+  for (const d of [-1, 1]){ if (b.sleeping){ c.beginPath(); c.arc(d * r * .3, -ry * .1, r * .09, .15 * Math.PI, .85 * Math.PI); c.stroke(); } else { c.beginPath(); c.ellipse(d * r * .3, -ry * .08, r * .085, r * .12, 0, 0, 7); c.fill(); } }
+  for (const k of ['neck', 'face', 'hat']) if (b[k]) drawAcc(c, b[k], r, ry, t, pal);
+  c.restore();
+}
+function drawHouse(t, dt){
+  const cvh = $('houseCv'); if (!cvh || !cvh.clientWidth || !world) return;
+  const dpr = Math.min(2, devicePixelRatio || 1), w = cvh.clientWidth, h = cvh.clientHeight;
+  if (cvh.width !== Math.round(w * dpr)){ cvh.width = Math.round(w * dpr); cvh.height = Math.round(h * dpr); }
+  const c = cvh.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  const night = isNight();
+  const sky = c.createLinearGradient(0, 0, 0, h); if (night){ sky.addColorStop(0, '#26235a'); sky.addColorStop(1, '#4a3d7c'); } else { sky.addColorStop(0, '#aee0ff'); sky.addColorStop(1, '#e8f6ff'); }
+  c.fillStyle = sky; rrC(c, 0, 0, w, h, 24); c.fill();
+  if (night){ c.fillStyle = '#fff6c8'; c.beginPath(); c.arc(w * .86, h * .1, w * .045, 0, 7); c.fill(); c.fillStyle = '#fff'; for (let i = 0; i < 12; i++){ c.globalAlpha = .4 + .6 * Math.abs(Math.sin(t * 1.5 + i)); star4C(c, (i * 83 % 100) / 100 * w, (i * 37 % 20) / 100 * h + 6, 2.2); } c.globalAlpha = 1; }
+  else { c.fillStyle = '#ffd86b'; c.beginPath(); c.arc(w * .86, h * .09, w * .05, 0, 7); c.fill(); c.fillStyle = '#fff'; const cx2 = ((t * 8) % (w + 80)) - 40; c.beginPath(); c.arc(cx2, h * .1, 12, 0, 7); c.arc(cx2 + 14, h * .085, 15, 0, 7); c.arc(cx2 + 28, h * .1, 11, 0, 7); c.fill(); }
+  c.fillStyle = night ? '#3c5a46' : '#9fdc9a'; c.fillRect(0, h * .92, w, h * .08);
+  const L = houseLayout(w, h);
+  // tetto e camino
+  c.fillStyle = '#c9a46a'; c.fillRect(L.x0 + L.bw * .72, L.y0 - L.roofH * .85, L.bw * .07, L.roofH * .6);
+  c.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 3; i++){ const p = (t * .3 + i / 3) % 1; c.globalAlpha = 1 - p; c.beginPath(); c.arc(L.x0 + L.bw * .755 + Math.sin(p * 6) * 6, L.y0 - L.roofH * .9 - p * h * .12, 5 + p * 8, 0, 7); c.fill(); } c.globalAlpha = 1;
+  c.fillStyle = '#ff8fbf'; c.beginPath(); c.moveTo(L.x0 - w * .03, L.y0 + 2); c.lineTo(w / 2, L.y0 - L.roofH); c.lineTo(L.x0 + L.bw + w * .03, L.y0 + 2); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2; for (let i = 1; i < 4; i++){ const yy = L.y0 - L.roofH + i * L.roofH / 4, half = (w / 2 - L.x0 + w * .03) * i / 4; c.beginPath(); c.moveTo(w / 2 - half, yy); c.lineTo(w / 2 + half, yy); c.stroke(); }
+  c.fillStyle = tokens.panel; c.strokeStyle = tokens.line; c.lineWidth = 2; rrC(c, L.x0, L.y0, L.bw, L.bh, 8); c.fill(); c.stroke();
+  for (let i = 0; i < 4; i++){
+    const q = L.rooms[i];
+    if (i >= world.rooms.length){
+      c.save(); c.setLineDash([6, 5]); c.strokeStyle = tokens.line; c.lineWidth = 2; rrC(c, q.x, q.y, q.w, q.h, 10); c.stroke(); c.restore();
+      c.fillStyle = tokens.ink; c.globalAlpha = .45; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.font = `800 ${Math.round(q.h * .2)}px "M PLUS Rounded 1c", sans-serif`; c.fillText(i === world.rooms.length ? '+' : '🔒', q.x + q.w / 2, q.y + q.h * .42);
+      if (i === world.rooms.length){ c.font = `800 ${Math.max(11, Math.round(q.h * .085))}px "M PLUS Rounded 1c", sans-serif`; c.fillText(ROOM_PRICES[i] ? `Nuova stanza · ${ROOM_PRICES[i]}★` : 'Nuova stanza gratis', q.x + q.w / 2, q.y + q.h * .7); }
+      c.globalAlpha = 1; continue;
+    }
+    const room = world.rooms[i], col = roomColorsFor(room);
+    c.save(); rrC(c, q.x, q.y, q.w, q.h, 10); c.clip();
+    const g = c.createLinearGradient(0, q.y, 0, q.y + q.h); g.addColorStop(0, col.wall2); g.addColorStop(1, col.wall); c.fillStyle = g; c.fillRect(q.x, q.y, q.w, q.h);
+    const fy = q.y + q.h * .9;
+    c.fillStyle = night ? '#4a3d7c' : '#bfe6ff'; rrC(c, q.x + q.w * .07, q.y + q.h * .14, q.w * .2, q.h * .26, 4); c.fill();
+    c.fillStyle = col.floor; c.fillRect(q.x, fy - q.h * .08, q.w, q.h);
+    drawRug(c, q.x + q.w * .55, fy + q.h * .02, q.w * .32, q.h * .06, room.rug || 'rosa', col.rug, t);
+    for (const id of room.furnOn){ const F = FURN[id]; if (!F) continue; const fp = (room.fpos && room.fpos[id]) || {x: F.x, y: F.y}, S = F.s * q.h;
+      drawFurnShape(c, id, q.x + fp.x * q.w, F.kind === 'wall' ? q.y + fp.y * q.h : fy - S * .46, S, t, false); }
+    const pres = presentIn(i);
+    pres.forEach((b, k) => { if (!houseEnts[b.id] || houseEnts[b.id].room !== i) houseEnts[b.id] = {x: (k + 1) / (pres.length + 1), tx: rf(.2, .8), hop: 0, room: i}; });
+    for (const a of pres) for (const o of pres){ if (a === o) continue; const ea = houseEnts[a.id], eo = houseEnts[o.id], d = ea.x - eo.x;
+      if (Math.abs(d) < .3){ const push = (.3 - Math.abs(d)) * dt * 2 * (d < 0 ? -1 : 1); ea.x = lim(ea.x + push, .12, .88); if (Math.abs(ea.tx - eo.x) < .3) ea.tx = lim(eo.x + (d < 0 ? -.35 : .35), .12, .88); } }
+    pres.forEach((b, k) => {
+      const he = houseEnts[b.id] || (houseEnts[b.id] = {x: .3 + k * .25, tx: rf(.2, .8), hop: 0});
+      const moving = !b.sleeping && b.stage !== 'egg';
+      if (moving){ if (Math.abs(he.tx - he.x) < .01){ if (Math.random() < dt * .4) he.tx = rf(.15, .85); he.hop = 0; } else { he.x += Math.sign(he.tx - he.x) * Math.min(Math.abs(he.tx - he.x), .12 * dt); he.hop += dt * 8; } }
+      const r = q.h * .17 * (b.stage === 'egg' ? .8 : ({baby:.7, child:.85}[b.stage] || 1));
+      const bx = q.x + he.x * q.w, by = fy - r * .88 * .78 - Math.abs(Math.sin(he.hop)) * r * .14;
+      drawBlobMini(c, bx, by, r, b, t);
+      const st = b.stage === 'egg' ? '' : b.sick ? '🤒' : b.sleeping ? '💤' : b.wish ? b.wish.e : core(b) < 35 ? '❗' : '';
+      if (st){ c.fillStyle = tokens.panel; c.beginPath(); c.arc(bx + r * .75, by - r * 1.05, r * .38, 0, 7); c.fill(); emojiC(c, st, bx + r * .75, by - r * 1.05, r * .45); }
+      c.fillStyle = tokens.ink; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `800 ${Math.max(10, Math.round(q.h * .075))}px "M PLUS Rounded 1c", sans-serif`;
+      c.fillText(b.name || 'Uovo', bx, Math.min(q.y + q.h - 7, fy + q.h * .05));
+    });
+    const away = houseBlobs().filter(b => b.walk && homeIdx(b) === i);
+    if (away.length){ emojiC(c, '🪧', q.x + q.w * .85, fy - q.h * .1, q.h * .18); c.fillStyle = tokens.ink; c.font = `800 ${Math.max(10, Math.round(q.h * .07))}px "M PLUS Rounded 1c", sans-serif`; c.textAlign = 'right'; c.fillText(`${away[0].name} è fuori`, q.x + q.w - 6, q.y + q.h * .5); }
+    c.restore();
+    c.fillStyle = 'rgba(255,255,255,.82)'; c.font = `800 ${Math.max(10, Math.round(q.h * .075))}px "M PLUS Rounded 1c", sans-serif`;
+    const tw = c.measureText(room.name).width + 12; rrC(c, q.x + 6, q.y + 6, tw, q.h * .12, 8); c.fill();
+    c.fillStyle = '#3b2842'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(room.name, q.x + 12, q.y + 6 + q.h * .06);
+    c.strokeStyle = tokens.line; c.lineWidth = 2; rrC(c, q.x, q.y, q.w, q.h, 10); c.stroke();
+  }
+}
+function star4C(c, x, y, s){ c.beginPath(); c.moveTo(x, y - s); c.quadraticCurveTo(x, y, x + s, y); c.quadraticCurveTo(x, y, x, y + s); c.quadraticCurveTo(x, y, x - s, y); c.quadraticCurveTo(x, y, x, y - s); c.fill(); }
+
 /* ---------- canestro ---------- */
 const HOOP = () => { const r = curRoom(), fp = (r && r.fpos && r.fpos.canestro) || {x:.5, y:.4}; return {x: fp.x * W, y: fp.y * H, w: Math.max(W * .15, ball.r * 3.8)}; };
 let hoopFx = 0, hoopStreak = 0, lastHoopAt = 0, hoopCoins = 6, lastHoopRefill = Date.now(), lastDunk = 0;
@@ -3072,10 +3460,10 @@ function drawPoop(x, y, s, t){
     ctx.moveTo(x - 6 + i*12, y - s*1.2 - o); ctx.quadraticCurveTo(x - 2 + i*12, y - s*1.4 - o, x - 6 + i*12, y - s*1.6 - o); ctx.stroke(); }
   ctx.globalAlpha = 1;
 }
-function drawEgg(t, s){
-  const r = R, cx = pet.x, cy = groundY();
+function drawEgg(t, s, P = pet, Rl = R){
+  const r = Rl, cx = P.x, cy = FLOOR - Rl * .88 * .78;
   const left = s ? Math.max(0, (s.hatchAt - Date.now()) / 1000) : 99;
-  const shake = (left < 12 ? .16 : .05) * Math.sin(t*(left < 12 ? 14 : 3)) + pet.wob*.25*Math.sin(t*20);
+  const shake = (left < 12 ? .16 : .05) * Math.sin(t*(left < 12 ? 14 : 3)) + (P.wob || 0)*.25*Math.sin(t*20);
   ctx.save(); ctx.translate(cx, cy + r*.9); ctx.rotate(shake); ctx.translate(0, -r*.9);
   ctx.fillStyle = 'rgba(80,30,60,.12)'; ctx.beginPath(); ctx.ellipse(0, r*.95, r*.7, r*.14, 0, 0, 7); ctx.fill();
   const g = ctx.createRadialGradient(-r*.3, -r*.4, r*.1, 0, 0, r*1.2); g.addColorStop(0, '#fffaf2'); g.addColorStop(1, '#ffe0c6');
@@ -3086,10 +3474,10 @@ function drawEgg(t, s){
     p.slice(0, n).forEach(([x, y], i) => i ? ctx.lineTo(x*r, y*r) : ctx.moveTo(x*r, y*r)); ctx.stroke(); }
   ctx.restore();
 }
-function blobPath(rx, ry, t, kind){
+function blobPath(rx, ry, t, kind, wob = pet.wob){
   const N = 48, pts = [];
   for (let i = 0; i < N; i++){
-    const a = i/N*Math.PI*2; let r = 1 + .025*Math.sin(a*3 + t*2) + pet.wob * .05 * Math.sin(a*5 + t*25);
+    const a = i/N*Math.PI*2; let r = 1 + .025*Math.sin(a*3 + t*2) + (wob || 0) * .05 * Math.sin(a*5 + t*25);
     if (kind === 'nuvola' && Math.sin(a) < .2) r += .07*Math.max(0, Math.cos(a*6));
     if (kind === 'ombra' && Math.sin(a) > .3) r += .06*Math.sin(a*9 + t*4);
     let x = Math.cos(a)*rx*r, y = Math.sin(a)*ry*r;
@@ -3101,36 +3489,37 @@ function blobPath(rx, ry, t, kind){
     if (!i) ctx.moveTo(mx, my); else ctx.quadraticCurveTo(p[0], p[1], mx, my); }
   const p = pts[0], q = pts[1]; ctx.quadraticCurveTo(p[0], p[1], (p[0] + q[0])/2, (p[1] + q[1])/2); ctx.closePath();
 }
-function currentExpr(){
-  const now = performance.now(), m = mood(state).k;
-  if (pet.anim && pet.anim.type === 'eat') return 'eat';
-  if (pet.held) return pet.expr === 'shy' ? 'shy' : 'wee';
-  if (pet.expr && now < pet.exprUntil) return pet.expr;
-  if (dragFood && awake()){ const mp = mouthPos(); if (Math.hypot(dragFood.x - mp.x, dragFood.y - mp.y) < R * 2.2) return 'open'; }
-  if (!pet.ground) return m === 'happy' ? 'wee' : 'ok';
+function currentExpr(s = state, P = pet){
+  const now = performance.now(), m = mood(s).k;
+  if (P.anim && P.anim.type === 'eat') return 'eat';
+  if (P.held) return P.expr === 'shy' ? 'shy' : 'wee';
+  if (P.expr && now < P.exprUntil) return P.expr;
+  if (P === pet && dragFood && awake()){ const mp = mouthPos(); if (Math.hypot(dragFood.x - mp.x, dragFood.y - mp.y) < R * 2.2) return 'open'; }
+  if (!P.ground) return m === 'happy' ? 'wee' : 'ok';
   return m;
 }
-function drawPet(t){
-  const s = state;
+const blobR = b => Math.min(W, H) * .2 * (!b || b.stage === 'egg' ? .8 : ({baby:.7, child:.85}[b.stage] || 1));
+function drawPet(t, s = state, P = pet, guest = false){
   if (!s){ if (!world){ pet.y = groundY(); drawEgg(t, s); } return; }
-  if (s.stage === 'egg'){ pet.y = groundY(); drawEgg(t, s); return; }
+  const R = blobR(s), RY = R * .88, gYl = FLOOR - RY * .78;
+  if (s.stage === 'egg'){ P.y = gYl; drawEgg(t, s, P, R); return; }
   if (s.walk) return;
-  const kind = kindOf(s), pal = palFor(s), m = currentExpr();
+  const kind = kindOf(s), pal = palFor(s), m = currentExpr(s, P);
   const FD = FORMS[kind] || {}, INK = FD.dark ? '#fff6d8' : '#3b2842', HL = FD.dark ? '#2c3570' : '#fff';
-  if (kind === 'lumino'){ const gl = ctx.createRadialGradient(pet.x, pet.y, R*.4, pet.x, pet.y, R*(isNight() ? 2.2 : 1.5)); gl.addColorStop(0, 'rgba(255,230,140,.35)'); gl.addColorStop(1, 'rgba(255,230,140,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(pet.x, pet.y, R*2.2, 0, 7); ctx.fill(); }
-  if (s.shiny){ ctx.fillStyle = '#ffe27a'; for (let i = 0; i < 3; i++){ const a = t*1.3 + i*2.1; ctx.globalAlpha = .5 + .5*Math.sin(t*4 + i); star4(pet.x + Math.cos(a)*R*1.25, pet.y + Math.sin(a)*R*.9, R*.08); } ctx.globalAlpha = 1; }
+  if (kind === 'lumino'){ const gl = ctx.createRadialGradient(P.x, P.y, R*.4, P.x, P.y, R*(isNight() ? 2.2 : 1.5)); gl.addColorStop(0, 'rgba(255,230,140,.35)'); gl.addColorStop(1, 'rgba(255,230,140,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(P.x, P.y, R*2.2, 0, 7); ctx.fill(); }
+  if (s.shiny){ ctx.fillStyle = '#ffe27a'; for (let i = 0; i < 3; i++){ const a = t*1.3 + i*2.1; ctx.globalAlpha = .5 + .5*Math.sin(t*4 + i); star4(P.x + Math.cos(a)*R*1.25, P.y + Math.sin(a)*R*.9, R*.08); } ctx.globalAlpha = 1; }
   const breathe = reduced ? 0 : Math.sin(t*(m === 'sleep' ? 1.2 : 2.2))*.03;
-  const hopY = pet.ground && pet.hop ? -Math.abs(Math.sin(pet.hop)) * R * .14 : 0;
+  const hopY = P.ground && P.hop ? -Math.abs(Math.sin(P.hop)) * R * .14 : 0;
   const rx = R*(1 + breathe), ry = RY*(1 - breathe);
-  const sx = 1 + (1 - pet.sq) * .7, sy = pet.sq;
+  const sx = 1 + (1 - P.sq) * .7, sy = P.sq;
   // ombra
-  const shH = Math.max(0, (groundY() - pet.y) / H);
-  ctx.fillStyle = 'rgba(80,30,60,.14)'; ctx.beginPath(); ctx.ellipse(pet.x, FLOOR + 2, rx*.85*(1 - shH*.8)*sx, R*.12*(1 - shH*.6), 0, 0, 7); ctx.fill();
+  const shH = Math.max(0, (gYl - P.y) / H);
+  ctx.fillStyle = 'rgba(80,30,60,.14)'; ctx.beginPath(); ctx.ellipse(P.x, FLOOR + 2, rx*.85*(1 - shH*.8)*sx, R*.12*(1 - shH*.6), 0, 0, 7); ctx.fill();
   // aura migliori amici
-  if (perk('aura')){ const gl = ctx.createRadialGradient(pet.x, pet.y, R*.6, pet.x, pet.y, R*1.6); const hue = (t*60) % 360;
-    gl.addColorStop(0, `hsla(${hue},90%,75%,.35)`); gl.addColorStop(1, `hsla(${(hue + 120) % 360},90%,75%,0)`); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(pet.x, pet.y, R*1.6, 0, 7); ctx.fill(); }
+  if (LEVELS.slice(0, s.level).some(l => l.perk === 'aura')){ const gl = ctx.createRadialGradient(P.x, P.y, R*.6, P.x, P.y, R*1.6); const hue = (t*60) % 360;
+    gl.addColorStop(0, `hsla(${hue},90%,75%,.35)`); gl.addColorStop(1, `hsla(${(hue + 120) % 360},90%,75%,0)`); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(P.x, P.y, R*1.6, 0, 7); ctx.fill(); }
   ctx.save();
-  ctx.translate(pet.x, pet.y + hopY + (pet.sink || 0)); ctx.rotate(pet.rot);
+  ctx.translate(P.x, P.y + hopY + (P.sink || 0)); ctx.rotate(P.rot);
   ctx.translate(0, ry*.78); ctx.scale(sx, sy); ctx.translate(0, -ry*.78);
   // decorazioni dietro
   if (kind === 'stellino' && !s.hat){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -ry*.9);
@@ -3145,22 +3534,22 @@ function drawPet(t){
   if (kind === 'lumino' && !s.hat){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -ry*.9); ctx.lineTo(0, -ry*1.25); ctx.stroke();
     const gl = .6 + .4*Math.sin(t*3); ctx.fillStyle = `rgba(255,230,120,${gl})`; ctx.beginPath(); ctx.arc(0, -ry*1.32, R*.12, 0, 7); ctx.fill(); }
   // braccino per il saluto
-  if (pet.anim && pet.anim.type === 'wave'){ ctx.save(); ctx.translate(rx*.85, -ry*.1); ctx.rotate(-1.2 + Math.sin(pet.anim.t*14)*.5); ctx.fillStyle = pal.b; ctx.beginPath(); ctx.ellipse(0, -R*.25, R*.13, R*.28, 0, 0, 7); ctx.fill(); ctx.restore(); }
+  if (P.anim && P.anim.type === 'wave'){ ctx.save(); ctx.translate(rx*.85, -ry*.1); ctx.rotate(-1.2 + Math.sin(P.anim.t*14)*.5); ctx.fillStyle = pal.b; ctx.beginPath(); ctx.ellipse(0, -R*.25, R*.13, R*.28, 0, 0, 7); ctx.fill(); ctx.restore(); }
   if (s.back) drawAcc(ctx, s.back, R, ry, t, pal);
   if (kind === 'gelatina' || kind === 'ombra') ctx.globalAlpha = kind === 'ombra' ? .82 : .88;
-  blobPath(rx, ry, t, kind);
+  blobPath(rx, ry, t, kind, P.wob);
   const g = ctx.createRadialGradient(-rx*.35, -ry*.45, R*.1, 0, 0, R*1.15);
   g.addColorStop(0, pal.a); g.addColorStop(1, pal.b); ctx.fillStyle = g; ctx.fill();
   ctx.globalAlpha = 1;
   if (kind === 'gelatina'){ ctx.fillStyle = 'rgba(255,255,255,.45)'; for (let i = 0; i < 4; i++){ const a = t*.7 + i*1.7; ctx.beginPath(); ctx.arc(Math.cos(a)*R*.45, Math.sin(a*1.3)*R*.3 + R*.1, R*(.05 + (i % 2)*.03), 0, 7); ctx.fill(); } }
   if (kind === 'lumino'){ for (let i = 0; i < 5; i++){ ctx.fillStyle = `rgba(255,230,120,${.5 + .5*Math.sin(t*2 + i)})`; ctx.beginPath(); ctx.arc(Math.cos(i*1.3)*R*.6, Math.sin(i*2.1)*R*.35 + R*.15, R*.045, 0, 7); ctx.fill(); } }
-  if (kind === 'pallino'){ ctx.save(); blobPath(rx, ry, t, kind); ctx.clip(); ctx.strokeStyle = 'rgba(90,40,10,.55)'; ctx.lineWidth = 2;
+  if (kind === 'pallino'){ ctx.save(); blobPath(rx, ry, t, kind, P.wob); ctx.clip(); ctx.strokeStyle = 'rgba(90,40,10,.55)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(-rx, ry*.05); ctx.quadraticCurveTo(0, ry*.25, rx, ry*.05); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, -ry); ctx.lineTo(0, -ry*.62); ctx.moveTo(0, ry*.55); ctx.lineTo(0, ry); ctx.stroke();
     ctx.beginPath(); ctx.arc(-rx*1.15, 0, rx*.6, -.9, .9); ctx.stroke(); ctx.beginPath(); ctx.arc(rx*1.15, 0, rx*.6, Math.PI - .9, Math.PI + .9); ctx.stroke(); ctx.restore();
     if (!s.hat){ ctx.fillStyle = '#fff'; roundRect(-rx*.75, -ry*.62, rx*1.5, R*.14, R*.06); ctx.fill(); ctx.fillStyle = '#ff5b5b'; ctx.fillRect(-rx*.75, -ry*.62 + R*.05, rx*1.5, R*.04); } }
   if (kind === 'razzo'){ ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, -ry*.45, R*.13, 0, 7); ctx.fill(); ctx.strokeStyle = '#d94b4b'; ctx.lineWidth = 2.5; ctx.stroke();
-    if (!pet.ground && Math.hypot(pet.vx, pet.vy) > 500) for (let i = 0; i < 2; i++) particles.push({type:'fire', x: pet.x + rf(-R*.3, R*.3), y: pet.y + RY*.6, vx: -pet.vx*.1, vy: -pet.vy*.1, life:.5, age:0, s: R*.18}); }
+    if (!P.ground && Math.hypot(P.vx, P.vy) > 500) for (let i = 0; i < 2; i++) particles.push({type:'fire', x: P.x + rf(-R*.3, R*.3), y: P.y + RY*.6, vx: -P.vx*.1, vy: -P.vy*.1, life:.5, age:0, s: R*.18}); }
   if (kind === 'bocciolo' && !s.hat){ ctx.save(); ctx.translate(R*.15, -ry*.95); ctx.rotate(Math.sin(t*1.2)*.12);
     for (let i = 0; i < 5; i++){ const a = i * Math.PI * 2 / 5; ctx.fillStyle = '#ff9ec7'; ctx.beginPath(); ctx.ellipse(Math.cos(a)*R*.13, Math.sin(a)*R*.13, R*.11, R*.08, a, 0, 7); ctx.fill(); }
     ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(0, 0, R*.08, 0, 7); ctx.fill(); ctx.restore(); }
@@ -3182,7 +3571,7 @@ function drawPet(t){
     star4(Math.cos(a)*rx*1.15, -ry*.9 + Math.sin(a)*R*.18, R*.07); } ctx.globalAlpha = 1; }
   // faccia
   let lx = 0, ly = 0;
-  if (pet.look){ const dx = pet.look.x - pet.x, dy = pet.look.y - pet.y, d = Math.hypot(dx, dy) || 1; lx = dx / d * R * .1; ly = dy / d * R * .06; }
+  if (P.look){ const dx = P.look.x - P.x, dy = P.look.y - P.y, d = Math.hypot(dx, dy) || 1; lx = dx / d * R * .1; ly = dy / d * R * .06; }
   else if (m !== 'sleep') lx = Math.sin(t*.5) * R * .03;
   if (m === 'shy' || m === 'distrust') lx -= R * .12;
   const ex = R*.3, ey = -ry*.08 + ly, fx = lx, er = R*.1;
@@ -3207,7 +3596,7 @@ function drawPet(t){
   }
   const my = ey + R*.28;
   ctx.beginPath();
-  if (m === 'eat'){ const o = Math.abs(Math.sin(pet.anim.t * 16)); ctx.fillStyle = '#c24d77'; ctx.ellipse(fx, my, R*.12, R*.04 + o*R*.09, 0, 0, 7); ctx.fill(); }
+  if (m === 'eat'){ const o = Math.abs(Math.sin(P.anim.t * 16)); ctx.fillStyle = '#c24d77'; ctx.ellipse(fx, my, R*.12, R*.04 + o*R*.09, 0, 0, 7); ctx.fill(); }
   else if (m === 'open' || m === 'wee'){ ctx.fillStyle = '#c24d77'; ctx.ellipse(fx, my + R*.02, R*.1, R*.12, 0, 0, 7); ctx.fill(); }
   else if (m === 'laugh' || m === 'happy'){ ctx.fillStyle = '#ff6f9a'; ctx.moveTo(fx - R*.14, my - R*.02); ctx.quadraticCurveTo(fx, my + R*(m === 'laugh' ? .3 : .22), fx + R*.14, my - R*.02); ctx.closePath(); ctx.fill(); }
   else if (m === 'sleep'){ ctx.ellipse(fx, my, R*.04, R*.05, 0, 0, 7); ctx.fill(); }
@@ -3219,28 +3608,28 @@ function drawPet(t){
     ctx.beginPath(); ctx.ellipse(fx + ex + er*.4, ey + R*.15 + p, R*.035, R*.055, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
   for (const k of ['neck', 'face', 'hat']) if (s[k]) drawAcc(ctx, s[k], R, ry, t, pal, fx, ey, ex);
   ctx.restore();
-  if (m === 'dizzy'){ ctx.fillStyle = '#ffcf3f'; for (let i = 0; i < 3; i++){ const a = t*4 + i*2.1; star5(pet.x + Math.cos(a)*R*.7, pet.y - RY*1.05 + Math.sin(a)*R*.15, R*.09); } }
+  if (m === 'dizzy'){ ctx.fillStyle = '#ffcf3f'; for (let i = 0; i < 3; i++){ const a = t*4 + i*2.1; star5(P.x + Math.cos(a)*R*.7, P.y - RY*1.05 + Math.sin(a)*R*.15, R*.09); } }
   if (m === 'sleep'){
     const dreams = ['⚽','🦋','🍦','🌈','🧸','🏀','⭐', FOODS[s.traits.favFood].e];
     const de = dreams[Math.floor(t / 4) % dreams.length];
-    const bx = lim(pet.x - R * 1.05, R * .5, W - R * .5), by = Math.max(R * .5, pet.y - RY - R * .55);
+    const bx = lim(P.x - R * 1.05, R * .5, W - R * .5), by = Math.max(R * .5, P.y - RY - R * .55);
     ctx.globalAlpha = .9; ctx.fillStyle = tokens.panel;
-    ctx.beginPath(); ctx.arc(pet.x - R * .45, pet.y - RY * .85, R * .06, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(pet.x - R * .7, pet.y - RY * 1.05, R * .1, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(P.x - R * .45, P.y - RY * .85, R * .06, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(P.x - R * .7, P.y - RY * 1.05, R * .1, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.ellipse(bx, by, R * .42, R * .32, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
     emoji(de, bx, by, R * .36);
   }
   if (m === 'sleep'){ ctx.fillStyle = tokens.ink;
     for (let i = 0; i < 3; i++){ const p = (t*.5 + i/3) % 1; ctx.globalAlpha = 1 - p; ctx.font = `${Math.round(R*(.16 + p*.14))}px "Mochiy Pop One", sans-serif`;
-      ctx.fillText('z', pet.x + rx*.7 + p*R*.4, pet.y - ry*.6 - p*R*.8); } ctx.globalAlpha = 1; }
-  if (m === 'sick' && !pet.held){ ctx.fillStyle = '#fff'; ctx.strokeStyle = '#ff7d9a'; ctx.lineWidth = 2; ctx.save(); ctx.translate(pet.x + rx*.55, pet.y - ry*.75); ctx.rotate(.3);
+      ctx.fillText('z', P.x + rx*.7 + p*R*.4, P.y - ry*.6 - p*R*.8); } ctx.globalAlpha = 1; }
+  if (m === 'sick' && !P.held){ ctx.fillStyle = '#fff'; ctx.strokeStyle = '#ff7d9a'; ctx.lineWidth = 2; ctx.save(); ctx.translate(P.x + rx*.55, P.y - ry*.75); ctx.rotate(.3);
     roundRect(-R*.2, -R*.07, R*.4, R*.14, R*.05); ctx.fill(); ctx.stroke(); ctx.restore(); }
-  if (s.wish && !s.sleeping && !pet.held){
+  if (!guest && s.wish && !s.sleeping && !P.held){
     const bob = Math.sin(t*2)*3, br = Math.max(22, R*.4);
-    const bx = lim(pet.x + R*1.05, br + 6, W - br - 6), by = Math.max(br*.8 + 6, pet.y - RY - br*.7) + bob;
+    const bx = lim(P.x + R*1.05, br + 6, W - br - 6), by = Math.max(br*.8 + 6, P.y - RY - br*.7) + bob;
     ctx.fillStyle = tokens.panel; ctx.strokeStyle = tokens.line; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(pet.x + R*.6, pet.y - RY*.8 + bob*.5, br*.1, 0, 7); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(pet.x + R*.78, pet.y - RY*1.0 + bob*.7, br*.16, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(P.x + R*.6, P.y - RY*.8 + bob*.5, br*.1, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(P.x + R*.78, P.y - RY*1.0 + bob*.7, br*.16, 0, 7); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.ellipse(bx, by, br, br*.78, 0, 0, 7); ctx.fill(); ctx.stroke();
     emoji(s.wish.e, bx, by + 1, br*.95);
   }
@@ -3304,7 +3693,9 @@ function drawParticles(dt){
 let lastT = performance.now();
 function frame(now){
   const dt = Math.min(.04, (now - lastT) / 1000); lastT = now;
+  if (tab === 'casa' && casaView === 'house' && world){ if (!tokens.panel) readTokens(); drawHouse(now / 1000, dt); requestAnimationFrame(frame); return; }
   if (tab === 'casa' && fit()){
+    syncGuests(); updateGuests(dt);
     geo();
     const t = now / 1000, s = state;
     if (pet.ground) pet.sinkT = 0;
@@ -3326,6 +3717,7 @@ function frame(now){
     if (flower){ flower.t += dt; const sc = Math.min(1, flower.t); emoji('🌼', flower.x, FLOOR - R*.25*sc, R*.5*sc + 1); }
     if (ev && ev.type === 'visitor') drawEvent(t);
     if (hasFurn('palla') && ball.y < pet.y) drawBall();
+    drawGuests(t);
     drawPet(t);
     if (s && petVisible()){
       const bh = pet.beh;
@@ -3569,7 +3961,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) tick
 window.addEventListener('pagehide', () => { if (state) save(); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.claude) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
-if (location.hash === '#debug') window.__bb = {ev: t => { ev = null; startEvent(t); }, get e(){ return ev; }, pet, ball, hoop: () => HOOP(), get W(){ return W; }, get H(){ return H; }, get s(){ return state; }, get world(){ return world; }, ensureDay, setRoom, tick, raw: () => state && blobById(state.id), render: () => render(true)};
+if (location.hash === '#debug') window.__bb = {ev: t => { ev = null; startEvent(t); }, get e(){ return ev; }, pet, ball, hoop: () => HOOP(), get W(){ return W; }, get H(){ return H; }, get s(){ return state; }, get world(){ return world; }, ensureDay, setRoom, tick, raw: () => state && blobById(state.id), render: () => render(true), get guests(){ return guests; }, visits, moveBlob, showHouse, focusBlob, get casaView(){ return casaView; }};
 initRemote();
 })();
 </script>
