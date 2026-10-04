@@ -361,7 +361,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 15</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 16</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -2189,7 +2189,8 @@ function openTransfer(){
     <p class="shopnote" style="margin-top:6px">Consiglio: incollalo in Note o mandatelo su WhatsApp, così non lo perdi.</p>
     <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">` : ''}
     <p class="shopnote" style="margin-bottom:8px"><b>Da un altro posto a qui.</b> Incolla il codice copiato da Safari o da un altro dispositivo.</p>
-    <textarea class="code" id="importCode" placeholder="BLOB1:…" aria-label="Incolla qui il codice"></textarea>
+    <textarea class="code" id="importCode" placeholder="BLOB2:…" aria-label="Incolla qui il codice" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea>
+    <div class="sheet-actions" style="margin-top:6px"><button class="btn ghost small" id="pasteCode" type="button">📋 Incolla</button><label class="btn ghost small" style="cursor:pointer">📄 Apri file del codice<input type="file" id="fileCode" accept=".txt,text/plain,*/*" hidden></label></div>
     <p class="err" id="importErr"></p>
     <div class="sheet-actions" style="margin-top:4px" id="importActions"><button class="btn ${has ? 'ghost' : ''}" id="loadCode" type="button">Carica questo blob</button></div>`, b => {
     const cp = b.querySelector('#copyCode'), sh = b.querySelector('#shareCode');
@@ -2205,17 +2206,37 @@ function openTransfer(){
     });
     if (sh) sh.addEventListener('click', () => { if (codeText) navigator.share({text: codeText}).catch(() => {}); });
     $('importCode').addEventListener('input', () => { $('importErr').textContent = ''; });
+    $('pasteCode').addEventListener('click', async () => {
+      let t = '';
+      try {
+        if (navigator.clipboard && navigator.clipboard.read){
+          for (const it of await navigator.clipboard.read()){
+            for (const ty of it.types){ if (ty.startsWith('text/') || ty === 'application/octet-stream'){ const x = await (await it.getType(ty)).text(); if (/BLOB[12]:/.test(x)){ t = x; break; } if (!t) t = x; } }
+            if (/BLOB[12]:/.test(t)) break;
+          }
+        }
+      } catch {}
+      if (!t){ try { t = await navigator.clipboard.readText(); } catch {} }
+      if (t){ $('importCode').value = t; $('importErr').textContent = ''; $('loadCode').click(); }
+      else $('importErr').textContent = 'Non riesco a leggere gli appunti: tieni premuto nel riquadro e scegli Incolla, oppure usa "Apri file del codice".';
+    });
+    $('fileCode').addEventListener('change', async e => {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      try { $('importCode').value = await f.text(); $('importErr').textContent = ''; $('loadCode').click(); }
+      catch { $('importErr').textContent = 'Non riesco ad aprire questo file.'; }
+    });
     $('loadCode').addEventListener('click', async () => {
       let incoming;
       const txt = $('importCode').value;
       if (!txt.trim()){ $('importErr').textContent = 'Incolla prima il codice.'; return; }
       try { incoming = await decodeSave(txt); }
-      catch (e){ $('importErr').textContent = e.message === 'nocode' ? 'Non trovo il codice: deve iniziare con BLOB1: o BLOB2:.' : e.message === 'old' ? 'Questo telefono è troppo vecchio per questo codice: aggiorna iOS o crea il codice dall\'altro lato dopo averlo aggiornato.' : 'Il codice è incompleto o rovinato. Copialo di nuovo per intero, fino all\'ultima lettera.'; return; }
+      catch (e){ const seen = txt.trim().slice(0, 30); $('importErr').textContent = e.message === 'nocode' ? `Non trovo il codice nel testo incollato (inizia con «${seen}»). Se l'hai salvato come file, usa "Apri file del codice".` : e.message === 'old' ? 'Questo telefono è troppo vecchio per questo codice: aggiorna iOS o crea il codice dall\'altro lato dopo averlo aggiornato.' : 'Il codice è incompleto o rovinato. Copialo di nuovo per intero, fino all\'ultima lettera.'; return; }
       const doLoad = () => {
         world = migrateWorld(incoming);
         for (const b of houseBlobs()) simulate(view(b), Date.now());
         evoQueue = [];
         setRoom(world.activeRoom || 0); welcome = true;
+        if (houseBlobs().length >= 2){ casaView = 'house'; render(true); }
         save(); closeSheet(); say(state && state.name ? `Bentornato ${state.name}!` : 'Casa trasferita!', 2600);
       };
       if (!has){ doLoad(); return; }
@@ -4456,7 +4477,7 @@ setInterval(tick, 1000);
 setTimeout(tick, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); else if (state) save(); });
 window.addEventListener('pagehide', () => { if (state) save(); });
-const APP_VERSION = 15;
+const APP_VERSION = 16;
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.claude) window.addEventListener('load', () => {
   const hadCtrl = !!navigator.serviceWorker.controller; let reloaded = false;
   navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'}).then(reg => {
