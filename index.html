@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Blobbino</title>
 <meta name="description" content="Il tuo blob virtuale da far crescere.">
 <meta name="theme-color" content="#fbf1f6" media="(prefers-color-scheme: light)">
@@ -44,7 +44,10 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
-html,body{margin:0}
+html,body{margin:0;touch-action:manipulation}
+*{-webkit-tap-highlight-color:transparent}
+input,textarea,select{font-size:16px!important}
+.stk,.dx,.card,.rowi,label,a{touch-action:manipulation}
 [hidden]{display:none!important}
 img{max-width:100%}
 button,.habitat,canvas,.tabbar{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -361,7 +364,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 17</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 18</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -4478,7 +4481,11 @@ setInterval(tick, 1000);
 setTimeout(tick, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); else if (state) save(); });
 window.addEventListener('pagehide', () => { if (state) save(); });
-const APP_VERSION = 17;
+const APP_VERSION = 18;
+/* niente zoom su iPhone: né doppio tocco né pizzico */
+document.addEventListener('gesturestart', e => e.preventDefault(), {passive: false});
+document.addEventListener('dblclick', e => e.preventDefault(), {passive: false});
+{ let lastEnd = 0; document.addEventListener('touchend', e => { const now = Date.now(); if (now - lastEnd < 320 && !e.target.closest('button,a,label,input,textarea,select,canvas,[data-k],[role="button"]')) e.preventDefault(); lastEnd = now; }, {passive: false}); }
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.claude) window.addEventListener('load', () => {
   const hadCtrl = !!navigator.serviceWorker.controller; let reloaded = false;
   navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'}).then(reg => {
