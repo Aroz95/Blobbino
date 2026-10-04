@@ -189,6 +189,14 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
 .code:focus{outline:none;border-color:var(--accent)}
 .steps{margin:0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
 .err{color:var(--warn);font-size:13px;font-weight:700;margin:6px 0 0;min-height:1em}
+.mlist{display:flex;flex-direction:column;gap:7px}
+.mrow{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13.5px}
+.mrow .em{font-size:20px;text-align:center;line-height:1}
+.mrow .mp{font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.mrow.done .mt{text-decoration:line-through;color:var(--muted)}
+.mrow.done .mp{color:var(--good)}
+.mhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.mhead .chest{font-size:13px;font-weight:800;color:var(--muted)}
 .big-em{font-size:56px;text-align:center;line-height:1.1}
 .sheet-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 
@@ -226,7 +234,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     <div class="who">
       <div class="brand">Blobbino</div>
       <h1 id="petName">Un uovo misterioso</h1>
-      <div class="sub"><span class="chip" id="stageChip">Uovo</span><span class="age" id="ageText"></span></div>
+      <div class="sub"><span class="chip" id="stageChip">Uovo</span><span class="chip" id="moodChip" hidden></span><span class="age" id="ageText"></span></div>
     </div>
     <div class="coins" id="coins" title="Stelline"><svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.8 6.1 6.7.7-5 4.5 1.4 6.6L12 17l-5.9 3.4 1.4-6.6-5-4.5 6.7-.7z"/></svg><b id="coinVal">0</b></div>
   </header>
@@ -266,6 +274,11 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
       <div class="em" id="wishEm">💭</div>
       <div><p class="t" id="wishT">Nessun desiderio</p><p class="s" id="wishS">Quando nasce, ogni tanto ti chiederà qualcosa.</p></div>
       <button class="btn small" id="wishBtn" type="button" hidden>Accontenta</button>
+    </section>
+
+    <section class="card" id="missionCard" aria-label="Missioni di oggi" hidden>
+      <div class="mhead"><h2 class="sec">Missioni di oggi</h2><span class="chest" id="chestTag"></span></div>
+      <div class="mlist" id="missionList"></div>
     </section>
 
     <section class="card bond" aria-label="Amicizia">
@@ -416,6 +429,11 @@ const STICKERS = {
   farfalla:{e:'🦋',n:'Farfalla',how:'Prendila in cameretta'}, bolle:{e:'🫧',n:'Tutte le bolle',how:'Scoppiale tutte'},
   tesoro:{e:'💎',n:'Tesoro',how:'Cerca dove luccica'}, stella:{e:'🌠',n:'Stella cadente',how:'Di notte, alla finestra'},
   arcobaleno:{e:'🌈',n:'Arcobaleno',how:'Di giorno, alla finestra'}, amico:{e:'👋',n:'Un amico',how:'Saluta chi viene a trovarlo'},
+  pioggia:{e:'💫',n:'Pioggia di stelle',how:'Raccogline tante'}, topolino:{e:'🐭',n:'Topolino',how:'Acchiappa il ladruncolo'},
+  fantasmino:{e:'👻',n:'Fantasmino',how:'Di notte, scaccialo'}, temporale:{e:'⛈️',n:'Temporale',how:'Calmalo con le coccole'},
+  lettera:{e:'💌',n:'Posta!',how:'Leggi una lettera'}, uccellino:{e:'🐦',n:'Uccellino',how:'Salutalo alla finestra'},
+  canestro:{e:'🏀',n:'Cecchino',how:'Fai 10 canestri'}, schiacciata:{e:'💥',n:'Schiacciata',how:'Lancia il blob nel canestro'},
+  forziere:{e:'🧰',n:'Missione compiuta',how:'Completa le missioni del giorno'},
   scoiattolo:{e:'🐿️',n:'Scoiattolo',how:'Al parco'}, foglia:{e:'🍁',n:'Foglia rossa',how:'Al parco'},
   palloncino:{e:'🎈',n:'Palloncino',how:'Al parco'}, coccinella:{e:'🐞',n:'Coccinella',how:'Al parco'},
   anatroccolo:{e:'🐥',n:'Anatroccolo',how:'Al lago'}, sasso:{e:'🪨',n:'Sasso piatto',how:'Al lago'},
@@ -442,6 +460,54 @@ const LEVELS = [
   {xp:900,  e:'🛞', t:'Trucco: capriola', trick:'roll', how:'Scorri di lato partendo dal blob'},
   {xp:1200, e:'💞', t:'Migliori amici', perk:'aura', how:'Un\'aura arcobaleno e una figurina speciale'}
 ];
+const DAYMOODS = {
+  giocherellone:{e:'🤪', n:'Giocherellone', d:'Oggi vuole giocare a palla e volare in alto.', wish:{ball:3, throw:3, hoop:2}, beh:{ball:3, shoot:3}},
+  coccolone:{e:'🥰', n:'Coccolone', d:'Oggi ti cerca di continuo per le coccole.', wish:{cuddle:4, tickle:3}, beh:{attention:4, look:2}},
+  goloso:{e:'😋', n:'Goloso', d:'Oggi pensa solo al cibo.', wish:{food:4}, beh:{}},
+  curioso:{e:'🧐', n:'Curioso', d:'Oggi succedono più sorprese del solito.', wish:{walk:3}, beh:{window:3}, ev:.6},
+  combinaguai:{e:'😈', n:'Combinaguai', d:'Oggi ne combina di tutti i colori.', wish:{}, beh:{mischief:5, tail:2}},
+  dormiglione:{e:'😴', n:'Dormiglione', d:'Oggi se la prende comoda.', wish:{cuddle:2}, beh:{yawn:3, idle:3}},
+  artista:{e:'🎨', n:'Artista', d:'Oggi canta e disegna sui muri.', wish:{trick:3}, beh:{sing:5, mischief:2}},
+  sportivo:{e:'🏀', n:'Sportivo', d:'Oggi vuole fare canestro.', wish:{hoop:3, dunk:3}, beh:{shoot:6}}
+};
+const MISSIONS = {
+  bounceWall:{t:'Fallo rimbalzare contro i muri', n:5, e:'🧱'},
+  ceiling:{t:'Lancialo fino al soffitto', n:1, e:'🚀'},
+  hoop:{t:'Fai canestro con la palla', n:3, e:'🏀'},
+  dunk:{t:'Lancia il blob dentro il canestro', n:1, e:'💥'},
+  kicks:{t:'Fagli calciare la palla', n:8, e:'⚽'},
+  tickle:{t:'Fallo ridere col solletico', n:15, e:'🤭'},
+  pets:{t:'Fagli tante carezze', n:40, e:'🤗'},
+  events:{t:'Approfitta delle sorprese', n:3, e:'🎉'},
+  feedHand:{t:'Dagli da mangiare a mano', n:3, e:'🍽️'},
+  newFood:{t:'Fagli assaggiare cibi diversi', n:2, e:'🍓'},
+  clean:{t:'Pulisci cacche o pasticci', n:2, e:'🧹'},
+  tricks:{t:'Fagli fare dei trucchi', n:3, e:'✨', lv:2},
+  trickVar:{t:'Fagli fare trucchi diversi', n:2, e:'🎪', lv:3},
+  games:{t:'Gioca a minigiochi diversi', n:2, e:'🎮'},
+  record:{t:'Supera un tuo record in un minigioco', n:1, e:'🏆'},
+  memory5:{t:'Arriva al round 5 a Memory', n:1, e:'🎨'},
+  catch15:{t:'Fai 15 punti ad Acchiappa', n:1, e:'🧺'},
+  hide3:{t:'Trovalo 3 volte di fila a Nascondino', n:1, e:'📦'},
+  walk:{t:'Portalo a fare una passeggiata', n:1, e:'🌳'},
+  wish:{t:'Esaudisci dei desideri', n:2, e:'💭'},
+  airtime:{t:'Tienilo in aria 2 secondi di fila', n:1, e:'🎈'},
+  catchBall:{t:'Afferra la palla mentre vola', n:2, e:'🫴'}
+};
+const LETTERS = [
+  {from:'Lumaca Ugo', e:'🐌', m:n=>`Caro ${n}, sono partito martedì per venirti a trovare. Dovrei arrivare verso marzo. Tienimi da parte un biscotto.`},
+  {from:'Nonna Gelatina', e:'🍮', m:n=>`Tesoro ${n}, mi raccomando: mangia la verdura e non rimbalzare sui mobili. Ti mando un pensierino.`},
+  {from:'Il gufo del bosco', e:'🦉', m:n=>`Uh uh, ${n}. Stanotte la luna era tonda come te. Volevo solo dirtelo.`},
+  {from:'Pippo il palloncino', e:'🎈', m:n=>`Ciao ${n}! Sono volato via dal parco e ora vedo tutto da quassù. Le case sembrano biscotti.`},
+  {from:'Un fan misterioso', e:'🕵️', m:n=>`Ho visto ${n} fare una capriola dalla finestra. Dieci e lode. Firmato: nessuno.`},
+  {from:'La nuvola Fiocco', e:'☁️', m:n=>`${n}, domani passo sopra casa tua. Se piove un po' scusami, è che starnutisco.`},
+  {from:'Cugino Blobbone', e:'🫠', m:n=>`Ehi ${n}! Ho imparato a stare in equilibrio su un piede. Non ho piedi, ma ci ho provato lo stesso.`},
+  {from:'Il postino', e:'📮', m:n=>`Gentile ${n}, questa lettera non era per te, ma era troppo carina per non consegnarla. Buona giornata.`},
+  {from:'Anatroccolo Bice', e:'🐥', m:n=>`Qua qua ${n}! Al lago ti aspettiamo. Porta le briciole, quelle buone.`},
+  {from:'La fatina dei denti', e:'🧚', m:n=>`Caro ${n}, mi dicono che non hai denti. Ti lascio lo stesso una stellina, per sicurezza.`},
+  {from:'Il topolino', e:'🐭', m:n=>`Scusa ${n} per quella volta del biscotto. Era buonissimo, però. Pace?`},
+  {from:'Il sole', e:'☀️', m:n=>`Buongiorno ${n}! Domani mi alzo presto apposta per entrare dalla tua finestra.`}
+];
 const TRICK_NAME = {wave:'il saluto', jump:'il salto mortale', spin:'la giravolta', dance:'il balletto', roll:'la capriola'};
 
 /* ================= stato ================= */
@@ -461,12 +527,14 @@ function migrate(s){
   const d = {coins:20, inv:{mela:2, biscotto:1}, hats:[], hat:null, furn:[], furnOn:[], known:{}, stickers:{},
     wish:null, nextWishAt:(s.hatchAt || now) + 90e3, walk:null, daily:{last:'', streak:0},
     records:{memory:0, catch:0, hide:0}, wishesDone:0, walks:0, snacks:0, plays:0, cuddles:[],
-    xp:0, level:1, messes:[], gift:null, lastGift:0, tricksDone:0};
+    xp:0, level:1, messes:[], gift:null, lastGift:0, tricksDone:0,
+    dayMood:null, missions:null, hoops:0, chests:0, lastEv:null};
   for (const k in d) if (s[k] === undefined) s[k] = d[k];
   if (!s.traits) s.traits = rollTraits();
   if (s.stage !== 'egg' && !s.stickers.schiusa) s.stickers.schiusa = s.hatchedAt || now;
   if (s.stage === 'adult' && s.branch && !s.stickers['evo_' + s.branch]) s.stickers['evo_' + s.branch] = now;
   if (s.wish && !s.wish.type) s.wish = null;
+  if (s.records.hoop === undefined) s.records.hoop = 0;
   s.v = 3;
   return s;
 }
@@ -707,7 +775,11 @@ function showLevelUp(lv){
 /* ================= desideri, regalo, passeggiate ================= */
 function makeWish(s){
   const now = Date.now(), opts = [];
-  const add = (w, n = 1) => { for (let i = 0; i < n; i++) opts.push(w); };
+  const dm = DM();
+  const add = (w, n = 1) => { const k = Math.max(1, Math.round(n * ((dm && dm.wish[w.type]) || 1))); for (let i = 0; i < k; i++) opts.push(w); };
+  add({type:'hoop', e:'🏀', text:'vuole vederti fare canestro', reward:rnd(6,9)}, 2);
+  if (s.energy > 30) add({type:'dunk', e:'💥', text:'vuole fare una schiacciata nel canestro', reward:rnd(7,10)});
+  add({type:'tickle', e:'🤭', text:'vuole il solletico', reward:rnd(4,7)});
   const food = Math.random() < .35 ? s.traits.favFood : pick(TASTY.filter(k => k !== s.traits.hateFood));
   const F = FOODS[food];
   add({type:'food', target:food, e:F.e, text:`vorrebbe ${F.n.toLowerCase()}`, reward:F.price + rnd(4,8)}, 2);
@@ -735,7 +807,7 @@ function fulfill(type, target){
   log(s, Date.now(), `Desiderio esaudito: ${s.name} ${w.text}. +${w.reward} stelline.`);
   giveSticker(s, 'desiderio'); if (s.wishesDone >= 10) giveSticker(s, 'desideri10');
   s.wish = null; s.nextWishAt = Date.now() + rnd(10, 25)*MIN;
-  gainXp(10); burst('sparkle', 14); sfx.coin();
+  gainXp(10); burst('sparkle', 14); sfx.coin(); mission('wish');
   setTimeout(() => say(`Desiderio esaudito! +${w.reward} stelline`, 2600), 700);
   saveSoon();
   return true;
@@ -745,12 +817,75 @@ function wishProgress(type, amount, need){
   w.prog = (w.prog || 0) + amount;
   if (w.prog >= need) fulfill(type, w.target);
 }
-let welcome = false, hatchFx = 0;
+let welcome = false, hatchFx = 0, missionDirty = true;
+const DM = () => state && state.dayMood ? DAYMOODS[state.dayMood.id] : null;
+function ensureDay(s){
+  const today = dayKey(Date.now());
+  if (!s.dayMood || s.dayMood.day !== today){ s.dayMood = {day: today, id: pick(Object.keys(DAYMOODS))}; missionDirty = true; }
+  if (!s.missions || s.missions.day !== today){
+    const pool = Object.keys(MISSIONS).filter(id => !MISSIONS[id].lv || s.level >= MISSIONS[id].lv).sort(() => Math.random() - .5);
+    s.missions = {day: today, list: pool.slice(0, 3).map(id => ({id, p:0, done:false})), sets:{}, chest:false};
+    missionDirty = true;
+  }
+}
+function mission(id, amt = 1, key){
+  const s = state; if (!s || !s.missions || s.stage === 'egg') return;
+  const m = s.missions.list.find(x => x.id === id && !x.done); if (!m) return;
+  if (key !== undefined){ const set = s.missions.sets[id] = s.missions.sets[id] || []; if (set.includes(key)) return; set.push(key); m.p = set.length; }
+  else m.p += amt;
+  const M = MISSIONS[id];
+  if (m.p >= M.n){
+    m.p = M.n; m.done = true; addCoins(8); gainXp(10); sfx.coin();
+    toast(`Missione compiuta: ${M.e} +8 stelline`, 2600); log(s, Date.now(), `Missione compiuta: ${M.t.toLowerCase()}.`);
+    if (s.missions.list.every(x => x.done) && !s.missions.chest){ s.missions.chest = true; setTimeout(tryChest, 1400); }
+  }
+  missionDirty = true; saveSoon();
+}
+function tryChest(){ if (!$('sheet').hidden || !$('gameOverlay').hidden || ptr.down){ setTimeout(tryChest, 1500); return; } openChest(); }
+function openChest(){
+  const s = state; if (!s) return; s.chests++;
+  const coins = 15 + Math.min(s.chests, 10) * 2, f1 = pick(TASTY), f2 = pick(TASTY);
+  s.inv[f1] = (s.inv[f1] || 0) + 1; s.inv[f2] = (s.inv[f2] || 0) + 1; addCoins(coins); gainXp(20);
+  const nw = giveSticker(s, 'forziere'); trayKey = '';
+  log(s, Date.now(), `Forziere del giorno: +${coins} stelline, ${FOODS[f1].e} e ${FOODS[f2].e}.`);
+  save(); render(true); sfx.level(); burst('confetti', 40);
+  openSheet('Forziere del giorno!', `<div class="loot"><div class="big-em">🧰</div><p style="text-align:center">Hai completato tutte le missioni di oggi.</p>
+    <div class="rows"><div class="rowi"><div class="em">⭐</div><div><b>+${coins} stelline</b><small>Più forzieri apri, più sono ricchi</small></div><span></span></div>
+    <div class="rowi"><div class="em" style="font-size:22px">${FOODS[f1].e}${FOODS[f2].e}</div><div><b>${FOODS[f1].n} e ${FOODS[f2].n.toLowerCase()}</b><small>In dispensa</small></div><span></span></div>
+    ${nw ? '<div class="rowi hl"><div class="em">🧰</div><div><b>Figurina: Missione compiuta</b><small>Guardala nell\'album</small></div><span></span></div>' : ''}</div>
+    <p class="shopnote">Domani arrivano tre missioni nuove.</p></div><div class="sheet-actions"><button class="btn" data-close type="button">Evviva!</button></div>`);
+}
+function renderMissions(){
+  missionDirty = false;
+  const s = state, card = $('missionCard');
+  card.hidden = !s || s.stage === 'egg' || !s.missions;
+  if (card.hidden) return;
+  const L = s.missions.list, done = L.filter(m => m.done).length;
+  $('chestTag').textContent = s.missions.chest ? '🧰 Forziere aperto' : `${done}/3 · 🧰`;
+  $('missionList').innerHTML = L.map(m => { const M = MISSIONS[m.id];
+    return `<div class="mrow${m.done ? ' done' : ''}"><span class="em">${M.e}</span><span class="mt">${M.t}</span><span class="mp">${m.done ? '✓' : m.p + '/' + M.n}</span></div>`; }).join('');
+}
+function idleLine(){
+  const s = state, h = new Date().getHours(), L = [];
+  if (h < 11) L.push('Buongiorno! Colazione?', 'Ho fatto un sogno stranissimo…');
+  else if (h < 18) L.push('Che si fa oggi pomeriggio?', 'Mi annoio un pochino…', 'Sai che ti voglio bene?');
+  else L.push('Si sta facendo sera…', 'Mi racconti una storia?', 'Guarda quante cose abbiamo fatto oggi!');
+  if (s.hunger < 50) L.push('Mi brontola la pancia…');
+  if (s.fun < 50) L.push('Giochiamo a palla?', 'Lanciami in alto!');
+  if (s.hygiene < 50) L.push('Mi sento un po\' appiccicoso…');
+  const dm = DM();
+  if (dm) L.push({giocherellone:'Lanciami! Lanciami!', coccolone:'Mi fai una coccola?', goloso:'Cosa c\'è da mangiare?', curioso:'Cosa c\'è là fuori?',
+    combinaguai:'Non ho fatto niente io…', dormiglione:'Ancora cinque minuti…', artista:'Quel muro è così bianco…', sportivo:'Scommetto che faccio canestro!'}[s.dayMood.id]);
+  if (s.lastEv) L.push(s.lastEv);
+  if (s.missions && !s.missions.chest) L.push('Abbiamo ancora delle missioni da fare!');
+  return pick(L);
+}
 function tick(){
   const s = state; if (!s) return;
   const now = Date.now();
   let ch = simulate(s, now);
   if (s.stage === 'egg'){ render(); return; }
+  ensureDay(s);
   const free = $('sheet').hidden && $('gameOverlay').hidden && !ptr.down && !dragFood;
   if (free && levelUpQueue.length){ showLevelUp(levelUpQueue.shift()); return; }
   if (s.walk && s.walk.back && free){ walkReturn(); return; }
@@ -783,6 +918,8 @@ function dailyGift(){
       <div class="rowi"><div class="em">⭐</div><div><b>+${coins} stelline</b><small>Da spendere nel negozio</small></div><span></span></div>
       ${food ? `<div class="rowi"><div class="em">${FOODS[food].e}</div><div><b>${FOODS[food].n}</b><small>Aggiunto alla dispensa</small></div><span></span></div>` : ''}
       ${sevenNew ? `<div class="rowi hl"><div class="em">📅</div><div><b>Figurina: Una settimana</b><small>Sette giorni insieme!</small></div><span></span></div>` : ''}
+      ${DM() ? `<div class="rowi"><div class="em">${DM().e}</div><div><b>Oggi è ${DM().n.toLowerCase()}</b><small>${DM().d}</small></div><span></span></div>` : ''}
+      <div class="rowi"><div class="em">🎯</div><div><b>Tre missioni nuove</b><small>Completale tutte per aprire il forziere</small></div><span></span></div>
     </div></div>
     <div class="sheet-actions"><button class="btn" data-close type="button">Grazie!</button></div>`);
 }
@@ -850,6 +987,8 @@ function render(full){
   $('dotAlbum').hidden = !unseenStickers || tab === 'album';
   $('dotCasa').hidden = !(s && s.wish) || tab === 'casa';
   $('moodText').textContent = mood(s).t;
+  const dm = DM(); $('moodChip').hidden = !dm || egg; if (dm) $('moodChip').textContent = `${dm.e} ${dm.n}`;
+  if (missionDirty || full) renderMissions();
   $('hintText').textContent = !s ? '' : egg ? 'Accarezza l\'uovo per scaldarlo' : s.walk ? 'È fuori casa' : s.sleeping ? 'Dorme: accarezzalo piano' : HINTS[tool];
 
   const aw = $('away');
@@ -893,7 +1032,7 @@ function render(full){
     el.classList.toggle('low', !egg && v < 25);
   }
   const live = s && !egg && !s.walk;
-  const wishTool = w && ({food:'food', cuddle:'hand', ball:'hand', throw:'hand', trick:'hand', bath:'sponge', game:'play', walk:'walk'})[w.type];
+  const wishTool = w && ({food:'food', cuddle:'hand', ball:'hand', throw:'hand', trick:'hand', hoop:'hand', dunk:'hand', tickle:'hand', bath:'sponge', game:'play', walk:'walk'})[w.type];
   document.querySelectorAll('.tool').forEach(b => {
     const key = b.dataset.t || b.dataset.a;
     if (b.dataset.t) b.setAttribute('aria-pressed', tool === key ? 'true' : 'false');
@@ -1013,7 +1152,7 @@ function renderAlbum(){
   const r = s ? s.records : {memory:0, catch:0, hide:0};
   $('recs').innerHTML = [['memory','Memory','round'],['catch','Acchiappa','punti'],['hide','Nascondino','di fila']]
     .map(([k, n, u]) => `<div class="rec"><b>${r[k]}</b><span>${n}<br>${u}</span></div>`).join('')
-    + (s ? `<div class="rec"><b>${s.wishesDone}</b><span>Desideri<br>esauditi</span></div><div class="rec"><b>${s.tricksDone}</b><span>Trucchi<br>fatti</span></div><div class="rec"><b>${s.daily.streak}</b><span>Giorni<br>di fila</span></div>` : '');
+    + (s ? `<div class="rec"><b>${s.wishesDone}</b><span>Desideri<br>esauditi</span></div><div class="rec"><b>${s.tricksDone}</b><span>Trucchi<br>fatti</span></div><div class="rec"><b>${s.daily.streak}</b><span>Giorni<br>di fila</span></div><div class="rec"><b>${s.hoops}</b><span>Canestri<br>fatti</span></div><div class="rec"><b>${s.chests}</b><span>Forzieri<br>aperti</span></div><div class="rec"><b>${s.level}</b><span>Livello<br>amicizia</span></div>` : '');
   const ids = Object.keys(STICKERS), have = ids.filter(id => s && s.stickers[id]).length;
   $('stkCount').textContent = `${have} / ${ids.length}`;
   $('stickers').innerHTML = ids.map(id => {
@@ -1088,7 +1227,7 @@ function openWalk(){
     const now = Date.now();
     s.walk = {place:id, start:now, end: now + P.min*MIN};
     log(s, now, `${s.name} è partito per una passeggiata ${P.dove}.`);
-    closeSheet(); fulfill('walk', id); save(); render(true);
+    closeSheet(); fulfill('walk', id); mission('walk'); save(); render(true);
     say(`Ciao ciao! Torna tra ${P.min} minuti.`);
   }));
 }
@@ -1101,6 +1240,9 @@ $('wishBtn').addEventListener('click', () => {
   else if (w.type === 'throw') go('hand', 'Tienilo premuto, poi lancialo verso l\'alto!');
   else if (w.type === 'trick') go('hand', LEVELS.find(l => l.trick === w.target).how + '.');
   else if (w.type === 'bath') go('sponge', 'Strofina la spugna sul blob finché è pulitissimo.');
+  else if (w.type === 'hoop') go('hand', 'Trascina la palla e lanciala nel canestro!');
+  else if (w.type === 'dunk') go('hand', 'Tienilo premuto e lancialo dentro il canestro!');
+  else if (w.type === 'tickle') go('hand', 'Strofina veloce sul blob per fargli il solletico.');
   else if (w.type === 'game') openGames();
   else if (w.type === 'walk') openWalk();
   else if (w.type === 'hat'){ shopSec = 'hats'; setTab('negozio'); }
@@ -1243,7 +1385,10 @@ cv.addEventListener('pointerdown', e => {
   Object.assign(ptr, {down:true, sx:p.x, sy:p.y, x:p.x, y:p.y, t0:now, moved:0, mode:null, onPet:hitPet(p), onBall:hitBall(p),
     angle:0, lastAng:null, samples:[{x:p.x, y:p.y, t:now}], rub:0, rubWish:0, scrub:0});
   if (tool === 'sponge') ptr.mode = 'sponge';
-  else if (ptr.onBall && !ptr.onPet && petVisible()){ ptr.mode = 'ball'; ball.held = true; ball.ground = false; }
+  else if (ptr.onBall && !ptr.onPet && petVisible()){
+    if (!ball.ground && ball.y < FLOOR - ball.r * 3) mission('catchBall');
+    ptr.mode = 'ball'; ball.held = true; ball.ground = false;
+  }
   else if (ptr.onPet && petVisible()){
     clearTimeout(ptr.holdT);
     ptr.holdT = setTimeout(() => { if (ptr.down && ptr.moved < 12 && !ptr.mode) startGrab(); }, 300);
@@ -1284,7 +1429,7 @@ function endPointer(e){
   const vel = {x: (b.x - a.x) / dt, y: (b.y - a.y) / dt};
   ptr.down = false;
   if (ptr.mode === 'grab'){ release(vel); }
-  else if (ptr.mode === 'ball'){ ball.held = false; ball.vx = lim(vel.x, -2600, 2600); ball.vy = lim(vel.y, -2600, 2600); if (Math.hypot(vel.x, vel.y) > 400) wishProgress('ball', 1, 3); }
+  else if (ptr.mode === 'ball'){ ball.held = false; ball.by = 'you'; ball.vx = lim(vel.x, -2600, 2600); ball.vy = lim(vel.y, -2600, 2600); if (Math.hypot(vel.x, vel.y) > 400) wishProgress('ball', 1, 3); }
   else if (ptr.mode !== 'sponge'){
     const dur = now - ptr.t0, dist = Math.hypot(ptr.x - ptr.sx, ptr.y - ptr.sy);
     if (Math.abs(ptr.angle) > 5.3 && dur < 2500 && awake()) gesture('spin');
@@ -1314,6 +1459,8 @@ function rub(seg, speed){
   if (speed > 1300){
     pet.tickle += .12;
     setExpr('laugh', .6); s.fun = clamp(s.fun + .9); burst('note', 1); if (Math.random() < .5) sfx.giggle();
+    mission('tickle'); wishProgress('tickle', 1, 8);
+    if (ev && ev.type === 'storm') ev.calm += seg * 2;
     pet.wob = 1; squish(.15);
     if (pet.tickle > 3.2){
       pet.tickle = 0; ptr.mode = 'done'; say(pick(['Basta solletico! Hihihi','Ahah, non respiro più!']), 2000);
@@ -1324,7 +1471,8 @@ function rub(seg, speed){
     setExpr(s.trust < 35 ? 'shy' : 'love', .8);
     s.trust = clamp(s.trust + (s.trust < 35 ? 1.2 : .6)); s.fun = clamp(s.fun + .35);
     burst('heart', 1); if (Math.random() < .35) sfx.purr();
-    budgetXp(1);
+    budgetXp(1); mission('pets');
+    if (ev && ev.type === 'storm'){ ev.calm += 95; if (ev.calm > 600) stormCalm(); }
     if (s.trust < 35) chat(`${s.name} all'inizio si irrigidisce… poi si lascia andare.`, .6);
     else chat(pick(['Prrr…','Che bello…','Ancora!','Mmmh ♡']), .25);
   }
@@ -1354,7 +1502,7 @@ function release(vel){
   pet.held = false;
   pet.vx = lim(vel.x, -2400, 2400); pet.vy = lim(vel.y, -2600, 2600);
   pet.vr = lim(pet.vx / (R * 4), -12, 12);
-  pet.airFrom = pet.y;
+  pet.airFrom = pet.y; pet.airStart = performance.now();
   const now = Date.now(); pet.throws = pet.throws.filter(t => now - t < 30000); pet.throws.push(now);
   if (pet.vy < -900) fulfill('throw');
   if (Math.hypot(pet.vx, pet.vy) < 200) setExpr(null, 0);
@@ -1365,13 +1513,13 @@ function tap(p){
   if (ev && evTap(p)) return;
   if (s.gift && Math.hypot(p.x - s.gift.x * W, p.y - (FLOOR - R * .3)) < R * .5){ openGift(); return; }
   for (let i = 0; i < s.messes.length; i++){
-    const m = s.messes[i], mx = m.type === 'pot' ? W * .83 : m.x * W, my = m.type === 'pot' ? FLOOR - R * .15 : H * .5;
-    if (Math.hypot(p.x - mx, p.y - my) < R * .6){ s.messes.splice(i, 1); burst('sparkle', 10, mx, my); sfx.pop(); gainXp(3); say(m.type === 'pot' ? 'Pianta rimessa a posto!' : 'Muro pulito!'); if (awake()) setExpr('shy', 1.5); save(); return; }
+    const m = s.messes[i], mx = m.type === 'pot' ? W * .83 : m.x * W, my = m.type === 'pot' ? FLOOR - R * .15 : H * .6;
+    if (Math.hypot(p.x - mx, p.y - my) < R * .6){ s.messes.splice(i, 1); burst('sparkle', 10, mx, my); sfx.pop(); gainXp(3); mission('clean'); say(m.type === 'pot' ? 'Pianta rimessa a posto!' : 'Muro pulito!'); if (awake()) setExpr('shy', 1.5); save(); return; }
   }
   if (!s.walk) for (let i = 0; i < s.poops; i++){
     const px = W * (.2 + i * .1), py = FLOOR + H * .03;
     if (Math.hypot(p.x - px, p.y - py) < Math.max(26, R * .45)){
-      s.poops--; s.hygiene = clamp(s.hygiene + 6); burst('sparkle', 8, px, py); sfx.pop(); gainXp(2); floatText('Pulito!', px, py - 20, '#2fb585');
+      s.poops--; s.hygiene = clamp(s.hygiene + 6); burst('sparkle', 8, px, py); sfx.pop(); gainXp(2); mission('clean'); floatText('Pulito!', px, py - 20, '#2fb585');
       if (s.wish && s.wish.type === 'bath' && s.hygiene >= 100) fulfill('bath');
       save(); return;
     }
@@ -1383,7 +1531,7 @@ function tap(p){
     tapT = setTimeout(() => { const n = tapCount; tapCount = 0; resolveTaps(n); }, 280);
     return;
   }
-  if (hitBall(p) && petVisible()){ ball.vx = (ball.x - p.x) * 20 + rf(-200, 200); ball.vy = -rf(400, 700); ball.ground = false; sfx.pop(); return; }
+  if (hitBall(p) && petVisible()){ ball.by = 'you'; ball.vx = (ball.x - p.x) * 20 + rf(-200, 200); ball.vy = -rf(400, 700); ball.ground = false; sfx.pop(); return; }
   // tocco sul pavimento: viene lì
   if (awake() && pet.ground && p.y > H * .55){
     pet.beh = {type:'come', tx: lim(p.x, R, W - R), until: Date.now() + 5000};
@@ -1410,19 +1558,18 @@ function gesture(tr, dir){
   }
   doTrick(tr, dir);
 }
-function doTrick(tr, dir){
+function doTrick(tr, dir, self){
   const s = state; if (!awake() || pet.held) return;
-  if (s.energy < 8){ say('Troppo stanco per i trucchi…'); return; }
-  pet.beh = null; s.tricksDone++; s.fun = clamp(s.fun + 2); s.energy = clamp(s.energy - .5);
-  budgetXp(2);
+  if (s.energy < 8){ if (!self) say('Troppo stanco per i trucchi…'); return; }
+  pet.beh = null; s.fun = clamp(s.fun + 2); s.energy = clamp(s.energy - .5);
+  if (!self){ s.tricksDone++; budgetXp(2); mission('tricks'); mission('trickVar', 1, tr); }
   if (tr === 'wave'){ pet.anim = {type:'wave', t:0, dur:1.6}; say('Ciao ciao!', 1500); sfx.giggle(); }
   else if (tr === 'jump'){ pet.ground = false; pet.vy = -Math.sqrt(2 * G() * H * .5); pet.vr = (2 * Math.PI) / (2 * -pet.vy / G()) * (pet.dir || 1); pet.anim = {type:'flip', t:0, dur:9}; sfx.wee(); setExpr('wee', 1.2); }
   else if (tr === 'spin'){ pet.anim = {type:'spin', t:0, dur:.9}; sfx.wee(); setExpr('happy', 1.2); }
   else if (tr === 'dance'){ pet.anim = {type:'dance', t:0, dur:3.6}; setExpr('happy', 3.6); say('♪ Balliamo! ♪', 2000); }
   else if (tr === 'roll'){ pet.anim = {type:'roll', t:0, dur:1.1, dir: dir || pet.dir || 1}; sfx.boing(); setExpr('wee', 1.1); }
   burst('sparkle', 6);
-  wishProgress('trick', 1, 1);
-  if (s.wish && s.wish.type === 'trick' && s.wish.target === tr) fulfill('trick', tr);
+  if (!self && s.wish && s.wish.type === 'trick' && s.wish.target === tr) fulfill('trick', tr);
 }
 
 /* ---------- cibo trascinato ---------- */
@@ -1475,6 +1622,7 @@ function eat(id, byHand, fx, fy){
     return false;
   }
   pet.anim = {type:'eat', t:0, dur:.9}; sfx.chomp();
+  mission('newFood', 1, id);
   if (id === s.traits.hateFood){
     const first = reveal(s, 'hateFood');
     s.hunger = clamp(s.hunger + 4); s.fun = clamp(s.fun - 8); setExpr('yuck', 1.8); sfx.sad();
@@ -1486,7 +1634,7 @@ function eat(id, byHand, fx, fy){
   s.hunger = clamp(s.hunger + F.hunger); s.fun = clamp(s.fun + F.fun);
   s.health = clamp(s.health + (F.health || 0)); s.thirst = clamp(s.thirst + (F.thirst || 0)); s.trust = clamp(s.trust + 1);
   if (F.sweet) s.snacks++;
-  if (byHand) gainXp(id === 'pappa' ? 1 : 3);
+  if (byHand){ gainXp(id === 'pappa' ? 1 : 3); mission('feedHand'); }
   if (id === s.traits.favFood){
     const first = reveal(s, 'favFood');
     s.fun = clamp(s.fun + 15); s.trust = clamp(s.trust + 3); burst('heart', 12); setExpr('happy', 2);
@@ -1501,33 +1649,89 @@ function eat(id, byHand, fx, fy){
 /* ---------- eventi a sorpresa ---------- */
 function isNight(){ const h = new Date().getHours(); return h >= 20 || h < 7; }
 const WIN = () => ({x: W*.07, y: H*.1, w: W*.27, h: H*.33});
-function startEvent(){
-  const s = state, opts = ['butterfly','butterfly','bubbles','bubbles','glint','glint','visitor'];
-  if (isNight()) opts.push('star', 'star'); else if (Math.random() < .5) opts.push('rainbow');
-  const type = pick(opts), now = performance.now();
+const EV_MEMO = {butterfly:'Che bella la farfalla di prima!', bubbles:'Le bolle di sapone! Rifacciamolo!', glint:'Chissà se ci sono altri tesori…',
+  visitor:'Il mio amico tornerà a trovarmi?', star:'Ho visto una stella cadente con te!', rainbow:'Hai visto l\'arcobaleno?', starRain:'Piovevano stelline!',
+  mouse:'Quel topolino era velocissimo!', balloon:'Ne voglio un altro di palloncino!', ghost:'Meno male che c\'eri tu col fantasmino…',
+  storm:'Che paura il temporale…', letter:'Mi scrivi anche tu una lettera?', bird:'L\'uccellino cantava benissimo!'};
+let recentEv = [];
+function startEvent(force){
+  const s = state, nm = s.name, night = isNight();
+  const opts = ['butterfly','bubbles','glint','visitor','starRain','mouse','balloon','letter','storm'];
+  if (night) opts.push('star','ghost','ghost'); else opts.push('rainbow','bird','bird','butterfly');
+  let pool = opts.filter(o => !recentEv.includes(o)); if (!pool.length) pool = opts;
+  const type = force || pick(pool); recentEv.push(type); if (recentEv.length > 5) recentEv.shift();
+  pet.beh = null;
   if (type === 'butterfly'){ ev = {type, x:-30, y:H*.35, vx:W*.16, base:H*.32, t:0, life:24, turns:0}; say('Una farfalla! Prendila al volo!', 2400); }
   else if (type === 'bubbles'){ ev = {type, t:0, life:12, popped:0, items:Array.from({length:6}, (_, i) => ({x:rf(.1,.9)*W, y:FLOOR + i*H*.12, r:rf(.035,.055)*W, ph:rf(0,6), alive:true}))}; say('Bolle di sapone! Scoppiale!', 2200); }
-  else if (type === 'glint'){ ev = {type, x:rf(.15,.85)*W, t:0, life:22}; say(`${s.name} ha visto qualcosa che luccica…`, 2400); }
+  else if (type === 'glint'){ ev = {type, x:rf(.15,.85)*W, t:0, life:22}; say(`${nm} ha visto qualcosa che luccica…`, 2400); }
   else if (type === 'visitor'){ const k = pick(Object.keys(PAL).filter(k => k !== kindOf(s))); ev = {type, x:W + R, dir:-1, pal:PAL[k], t:0, life:20, greeted:false}; say('Toc toc! È arrivato un amico!', 2400); sfx.giggle(); }
   else if (type === 'star'){ ev = {type, t:0, life:4.5}; say('Guarda fuori! Una stella cadente!', 2400); }
   else if (type === 'rainbow'){ ev = {type, t:0, life:14}; say('È spuntato l\'arcobaleno! Toccalo!', 2400); }
-  void now;
+  else if (type === 'starRain'){ ev = {type, t:0, life:14, got:0, items:Array.from({length:9}, (_, i) => ({x:rf(.08,.92)*W, y:-20 - i*H*.11, vy:H*rf(.13,.2), ph:rf(0,6), alive:true}))}; say('Piovono stelline! Raccoglile!', 2400); }
+  else if (type === 'mouse'){ ev = {type, x:-20, y:FLOOR - 8, dir:1, t:0, life:9, flip:1.2}; say('Un topolino! Acchiappalo prima che rubi qualcosa!', 2600); }
+  else if (type === 'balloon'){ ev = {type, x:rf(.25,.75)*W, y:FLOOR - 10, t:0, life:16}; say('Un palloncino! Cosa ci sarà dentro?', 2400); }
+  else if (type === 'letter'){ ev = {type, x:-30, t:0, life:40}; say(`Posta! È arrivata una lettera per ${nm}.`, 2400); sfx.note(); }
+  else if (type === 'storm'){ ev = {type, t:0, life:18, calm:0, flash:0, nextFlash:1}; say(`Temporale! ${nm} ha paura: coccolalo!`, 2800); }
+  else if (type === 'ghost'){ ev = {type, x:W*.2, y:H*.45, t:0, life:18, hits:0, a:0}; say(`Un fantasmino! ${nm} trema: toccalo per scacciarlo!`, 2800); }
+  else if (type === 'bird'){ ev = {type, t:0, life:18, x:-20, y:H*.12, landed:false, leaving:false}; say('Un uccellino alla finestra!', 2200); }
 }
-function endEvent(){ ev = null; nextEvAt = Date.now() + rnd(45, 100) * 1000; }
+function endEvent(){ ev = null; const m = (DM() && DM().ev) || 1; nextEvAt = Date.now() + rnd(35, 80) * 1000 * m; }
 function evReward(stk, coins, xp, msg, x, y){
-  const s = state; addCoins(coins); gainXp(xp); sfx.coin();
-  floatText(`+${coins}`, x, y);
+  const s = state;
+  if (coins){ addCoins(coins); floatText(`+${coins}`, x, y); sfx.coin(); }
+  gainXp(xp);
   const nw = stk && giveSticker(s, stk);
-  say(nw ? `${msg} Nuova figurina: ${STICKERS[stk].e} ${STICKERS[stk].n}!` : msg, 2600);
-  saveSoon();
+  say(nw ? `${msg} Nuova figurina: ${STICKERS[stk].e} ${STICKERS[stk].n}!` : msg, 2800);
+  if (ev && EV_MEMO[ev.type]) s.lastEv = EV_MEMO[ev.type];
+  mission('events'); saveSoon();
+}
+const birdPos = () => { const w = WIN(); return {x: w.x + w.w * .78, y: w.y + w.h + 2 - R * .18}; };
+function evTarget(){
+  const e = ev; if (!e) return null;
+  if (e.type === 'butterfly' || e.type === 'balloon' || e.type === 'mouse') return {x:e.x, y:e.y};
+  if (e.type === 'bubbles' || e.type === 'starRain'){ const al = e.items.filter(i => i.alive); if (!al.length) return null;
+    const n = al.reduce((a, c) => Math.abs(c.x - pet.x) < Math.abs(a.x - pet.x) ? c : a); return {x:n.x, y:n.y}; }
+  return null;
+}
+function stormCalm(){
+  if (!ev || ev.type !== 'storm' || ev.done) return;
+  ev.done = true; state.trust = clamp(state.trust + 4); burst('heart', 10); setExpr('love', 2);
+  evReward('temporale', 3, 6, `${state.name} si è calmato tra le tue coccole.`, pet.x, pet.y - R);
+  ev.life = Math.min(ev.life, ev.t + 2.5);
+}
+function popBalloon(byPet){
+  const e = ev, s = state; sfx.pop(); burst('confetti', 16, e.x, e.y);
+  const food = Math.random() < .4 ? pick(TASTY) : null, coins = rnd(3, 7);
+  if (food){ s.inv[food] = (s.inv[food] || 0) + 1; trayKey = ''; }
+  const inside = food ? `${FOODS[food].e} e qualche stellina` : 'qualche stellina';
+  evReward(null, coins, 3, byPet ? `${s.name} l'ha fatto scoppiare! Dentro c'era ${inside}.` : `Pop! Dentro c'era ${inside}.`, e.x, e.y);
+  endEvent();
+}
+function openLetter(){
+  const s = state, L = pick(LETTERS), food = Math.random() < .5 ? pick(TASTY) : null, coins = rnd(2, 6), x = ev.x;
+  if (food){ s.inv[food] = (s.inv[food] || 0) + 1; trayKey = ''; }
+  burst('sparkle', 8, x, FLOOR - 10);
+  evReward('lettera', coins, 3, 'Che bella lettera!', x, FLOOR - 30);
+  log(s, Date.now(), `Lettera da ${L.from} ${L.e}.`);
+  endEvent(); save();
+  openSheet(`Lettera da ${L.from}`, `<div class="loot"><div class="big-em">${L.e}</div><p class="story">${esc(L.m(s.name))}</p>
+    <div class="rows"><div class="rowi"><div class="em">⭐</div><div><b>+${coins} stelline</b><small>Erano nella busta</small></div><span></span></div>
+    ${food ? `<div class="rowi"><div class="em">${FOODS[food].e}</div><div><b>${FOODS[food].n}</b><small>Un pensierino, in dispensa</small></div><span></span></div>` : ''}</div></div>
+    <div class="sheet-actions"><button class="btn" data-close type="button">Che carino!</button></div>`);
 }
 function evTap(p){
-  const e = ev;
+  const e = ev, s = state;
   if (e.type === 'butterfly' && Math.hypot(p.x - e.x, p.y - e.y) < R * .55){ burst('sparkle', 12, e.x, e.y); evReward('farfalla', 3, 4, 'Presa! La lasci andare libera.', e.x, e.y); endEvent(); return true; }
   if (e.type === 'bubbles'){
     for (const b of e.items) if (b.alive && Math.hypot(p.x - b.x, p.y - b.y) < b.r * 1.5){
       b.alive = false; e.popped++; sfx.pop(); burst('bubble', 4, b.x, b.y); addCoins(1); floatText('+1', b.x, b.y); budgetXp(1);
       if (e.popped >= e.items.length){ evReward('bolle', 3, 3, 'Tutte scoppiate!', b.x, b.y); endEvent(); }
+      return true;
+    }
+  }
+  if (e.type === 'starRain'){
+    for (const b of e.items) if (b.alive && Math.hypot(p.x - b.x, p.y - b.y) < Math.max(26, W * .06)){
+      b.alive = false; e.got++; addCoins(1); floatText('+1', b.x, b.y); tone(1100 + e.got * 60, .08, 'square', .05); burst('sparkle', 4, b.x, b.y); budgetXp(1);
       return true;
     }
   }
@@ -1544,11 +1748,26 @@ function evTap(p){
   }
   if (e.type === 'visitor' && Math.hypot(p.x - e.x, p.y - groundY()) < R * .9 && !e.greeted){
     e.greeted = true; e.life = Math.min(e.life, e.t + 5);
-    const f = pick(TASTY); state.inv[f] = (state.inv[f] || 0) + 1;
+    const f = pick(TASTY); s.inv[f] = (s.inv[f] || 0) + 1;
     burst('heart', 8, e.x, groundY());
     evReward('amico', 2, 5, `Ciao! Ti ha portato ${FOODS[f].e} ${FOODS[f].n.toLowerCase()}.`, e.x, groundY() - R);
     trayKey = '';
     return true;
+  }
+  if (e.type === 'mouse' && Math.hypot(p.x - e.x, p.y - e.y) < R * .55){
+    s.inv.biscotto = (s.inv.biscotto || 0) + 1; trayKey = ''; burst('sparkle', 10, e.x, e.y);
+    evReward('topolino', 3, 4, 'Preso! Per scusarsi ti lascia un biscotto.', e.x, e.y - 20); endEvent(); return true;
+  }
+  if (e.type === 'balloon' && Math.hypot(p.x - e.x, p.y - e.y) < R * .5){ popBalloon(false); return true; }
+  if (e.type === 'ghost' && Math.hypot(p.x - e.x, p.y - e.y) < R * .6){
+    e.hits++; sfx.pop(); burst('sparkle', 6, e.x, e.y);
+    if (e.hits >= 3){ s.trust = clamp(s.trust + 3); burst('heart', 8); evReward('fantasmino', 4, 5, `Fantasmino scacciato! ${s.name} ti abbraccia.`, e.x, e.y); endEvent(); }
+    else { floatText('Sciò!', e.x, e.y - 20, '#a893ff'); e.x = rf(.15, .85) * W; e.y = rf(.25, .6) * H; }
+    return true;
+  }
+  if (e.type === 'letter' && e.x > 0 && Math.hypot(p.x - e.x, p.y - (FLOOR - 10)) < R * .55){ openLetter(); return true; }
+  if (e.type === 'bird' && e.landed && Math.hypot(p.x - e.x, p.y - e.y) < R * .5){
+    evReward('uccellino', 2, 3, 'Cip cip! Ti ha lasciato una piuma e una stellina.', e.x, e.y); e.landed = false; e.leaving = true; return true;
   }
   return false;
 }
@@ -1566,7 +1785,7 @@ function updateEvent(dt){
     else if (Date.now() > nextEvAt && !awake()) nextEvAt = Date.now() + 20000;
     return;
   }
-  const e = ev; e.t += dt;
+  const e = ev, s = state; e.t += dt;
   if (e.type === 'butterfly'){
     e.x += e.vx * dt; e.y = e.base + Math.sin(e.t * 2.2) * H * .1 + Math.sin(e.t * 5) * H * .02;
     if ((e.x > W * .9 && e.vx > 0) || (e.x < W * .1 && e.vx < 0 && e.t > 2)){ if (e.t < e.life) e.vx = -e.vx; e.turns++; }
@@ -1576,26 +1795,77 @@ function updateEvent(dt){
     let alive = 0;
     for (const b of e.items){ if (!b.alive) continue; b.y -= H * .1 * dt; b.x += Math.sin(e.t * 1.5 + b.ph) * 20 * dt; if (b.y < -b.r){ b.alive = false; } else alive++;
       if (!pet.ground && Math.hypot(b.x - pet.x, b.y - pet.y) < b.r + R * .8){ b.alive = false; sfx.pop(); burst('bubble', 3, b.x, b.y); chat('Pop!', .6); } }
-    if (!alive){ endEvent(); }
+    if (!alive) endEvent();
+  } else if (e.type === 'starRain'){
+    let alive = 0;
+    for (const b of e.items){ if (!b.alive) continue; b.y += b.vy * dt; b.x += Math.sin(e.t * 2 + b.ph) * 15 * dt;
+      if (!pet.ground && Math.hypot(b.x - pet.x, b.y - pet.y) < R * .9){ b.alive = false; e.got++; addCoins(1); floatText('+1', b.x, b.y); tone(1100 + e.got * 60, .08, 'square', .05); continue; }
+      if (b.y > FLOOR - 6){ b.alive = false; burst('sparkle', 2, b.x, FLOOR - 6); } else alive++; }
+    if (!alive){
+      if (e.got >= 6) evReward('pioggia', 2, 4, `Ne avete raccolte ${e.got}!`, W / 2, H * .3);
+      else if (e.got) evReward(null, 0, 2, `Raccolte ${e.got} stelline.`, W / 2, H * .3);
+      else chat('Sono cadute tutte…', 1);
+      endEvent();
+    }
   } else if (e.type === 'visitor'){
     const tx = e.t < e.life ? W * .8 : W + R * 1.5;
     if (Math.abs(tx - e.x) > 3) e.x += Math.sign(tx - e.x) * R * 2 * dt;
     if (e.t > e.life && e.x > W + R){ chat('Ciao amico!', 1); endEvent(); }
+  } else if (e.type === 'mouse'){
+    if (e.t < e.life){
+      e.flip -= dt; if (e.flip <= 0){ e.flip = rf(.6, 1.4); e.dir = Math.random() < .5 ? -1 : 1; }
+      if (petVisible() && Math.abs(e.x - pet.x) < R * 1.4) e.dir = Math.sign(e.x - pet.x) || 1;
+      if (e.x < 20) e.dir = 1; if (e.x > W - 20) e.dir = -1;
+    } else e.dir = e.x < W / 2 ? -1 : 1;
+    e.x += e.dir * W * .42 * dt;
+    if (awake() && pet.ground && Math.abs(e.x - pet.x) < R * .6 && Math.random() < dt * 1.2){
+      evReward('topolino', 1, 2, `${s.name} ha acchiappato il topolino da solo!`, e.x, e.y - 20); endEvent(); return;
+    }
+    if (e.t > e.life && (e.x < -30 || e.x > W + 30)){
+      const have = TASTY.filter(k => s.inv[k] > 0);
+      if (have.length){ const k = pick(have); s.inv[k]--; trayKey = ''; say(`Il topolino è scappato con ${FOODS[k].e}!`, 2600); log(s, Date.now(), `Un topolino ha rubato ${FOODS[k].e} ${FOODS[k].n.toLowerCase()}.`); saveSoon(); }
+      else say('Il topolino è scappato a mani vuote.', 2200);
+      endEvent();
+    }
+  } else if (e.type === 'balloon'){
+    e.y -= H * .06 * dt; e.x += Math.sin(e.t * 1.3) * 18 * dt;
+    if (!pet.ground && Math.hypot(pet.x - e.x, pet.y - e.y) < R * 1.1){ popBalloon(true); return; }
+    if (e.y < -40){ chat('Volato via…', 1); endEvent(); }
+  } else if (e.type === 'ghost'){
+    e.a = Math.min(1, e.t / 1.5); e.x += Math.sin(e.t * .9) * W * .08 * dt; e.y += Math.cos(e.t * 1.3) * H * .05 * dt;
+    if (e.t > e.life){ s.trust = clamp(s.trust - 1); say('Il fantasmino se n\'è andato… che paura.', 2200); endEvent(); }
+  } else if (e.type === 'storm'){
+    e.nextFlash -= dt;
+    if (e.nextFlash <= 0 && e.t < e.life - 1){ e.flash = 1; e.nextFlash = rf(2.2, 4.5); setTimeout(() => tone(55, 1.2, 'sawtooth', .07, .6), 250); if (!e.done && awake()){ squish(.2); pet.wob = 1; } }
+    e.flash = Math.max(0, e.flash - dt * 3);
+    if (e.t > e.life){ if (!e.done){ s.trust = clamp(s.trust - 1); say('Il temporale è passato. Che spavento…', 2200); } endEvent(); }
+  } else if (e.type === 'letter'){
+    if (e.x < W * .1) e.x += W * .25 * dt;
+    if (e.t > e.life){ chat('La lettera è finita sotto il letto…', 1); endEvent(); }
+  } else if (e.type === 'bird'){
+    const bp = birdPos();
+    if (!e.landed && !e.leaving){ e.x += (bp.x - e.x) * Math.min(1, dt * 2); e.y += (bp.y - e.y) * Math.min(1, dt * 2); if (Math.hypot(bp.x - e.x, bp.y - e.y) < 4) e.landed = true; }
+    else if (e.landed){ if (Math.random() < dt * 1.2){ burst('note', 1, e.x, e.y - 10); if (Math.random() < .5) tone(rf(1800, 2600), .08, 'sine', .05, 1.3); } if (e.t > e.life){ e.landed = false; e.leaving = true; } }
+    else { e.x += W * .5 * dt; e.y -= H * .3 * dt; if (e.y < -30 || e.x > W + 30) endEvent(); }
   } else if (e.t > e.life){ if (e.type === 'glint') chat('Oh, è sparito…', .8); endEvent(); }
 }
 
 /* ---------- cervello del blob ---------- */
 function choose(){
   const s = state, now = Date.now(), opts = [];
-  const add = (b, w) => { if (w > 0) opts.push([b, w]); };
+  const dm = DM();
+  const add = (b, w) => { if (dm && dm.beh[b.type]) w *= dm.beh[b.type]; if (w > 0) opts.push([b, w]); };
   if (welcome){ welcome = false; return {type:'welcome', until: now + 4000}; }
   const ff = floorFood.find(f => f.y >= FLOOR - 30 && (FOODS[f.id].drink ? s.thirst < 92 : s.hunger < 92) && f.id !== s.traits.hateFood);
   if (ff) return {type:'eatFloor', food:ff, until: now + 8000};
   if (ev){
-    if (ev.type === 'butterfly' || ev.type === 'bubbles') return {type:'chaseEv', until: now + 3000};
-    if (ev.type === 'glint') return {type:'dig', until: now + 6000};
-    if (ev.type === 'visitor') return {type:'greet', until: now + 5000};
-    if (ev.type === 'star' || ev.type === 'rainbow') return {type:'window', until: now + 4000};
+    const T = ev.type;
+    if (['butterfly','bubbles','starRain','balloon','mouse'].includes(T)) return {type:'chaseEv', until: now + 3000};
+    if (T === 'glint') return {type:'dig', until: now + 6000};
+    if (T === 'visitor') return {type:'greet', until: now + 5000};
+    if (T === 'star' || T === 'rainbow' || T === 'bird') return {type:'window', until: now + 4000};
+    if ((T === 'ghost' || T === 'storm') && !ev.done) return {type:'scared', until: now + 3000};
+    if (T === 'letter') return {type:'come', tx: lim(ev.x + R * 1.3, R, W - R), until: now + 3000};
   }
   if (s.distrust) add({type:'sulk', tx: W * .85}, 4);
   const ballMoving = Math.hypot(ball.vx, ball.vy) > 60;
@@ -1614,6 +1884,10 @@ function choose(){
   if (s.furnOn.includes('pianta')) add({type:'sniff'}, 1);
   if (s.furnOn.includes('quadro')) add({type:'art'}, .8);
   add({type:'hiccup'}, .5);
+  add({type:'shoot'}, !ball.held && Math.hypot(ball.vx, ball.vy) < 30 ? 1.4 : 0);
+  add({type:'sing'}, .9);
+  add({type:'tail'}, .6);
+  if (s.tricksDone > 0 && LEVELS.slice(0, s.level).some(l => l.trick)) add({type:'mimic'}, .8);
   if (s.messes.length < 2 && s.stage !== 'baby' || (s.messes.length < 2 && Math.random() < .5)) add({type:'mischief'}, s.fun < 45 ? 2.5 : .5);
   let tot = opts.reduce((a, o) => a + o[1], 0), r = Math.random() * tot;
   for (const [b, w] of opts){ if ((r -= w) <= 0) return Object.assign({until: now + rnd(3000, 6000)}, b); }
@@ -1641,8 +1915,8 @@ function brain(dt){
       break;
     case 'come': if (walkTo(b.tx, dt, 1.3)){ setExpr('happy', .8); pet.look = null; b.done = true; } break;
     case 'wander': pet.look = null; if (walkTo(b.tx, dt)) b.type = 'idle'; break;
-    case 'idle': pet.hop = 0; break;
-    case 'look': pet.hop = 0; pet.look = null; if (b.t > .2 && !b.said){ b.said = true; chat(pick([`${s.name} ti guarda.`, 'Ciao!', 'Che fai?', 'Mi annoio un po\'…']), .3); } break;
+    case 'idle': pet.hop = 0; if (!b.said && b.t > 1){ b.said = true; chat(idleLine(), .25); } break;
+    case 'look': pet.hop = 0; pet.look = null; if (b.t > .2 && !b.said){ b.said = true; chat(idleLine(), .5); } break;
     case 'window': {
       const w = WIN();
       if (walkTo(w.x + w.w * .5, dt)){ pet.look = {x: w.x + w.w/2, y: w.y}; if (!b.said){ b.said = true; chat(isNight() ? pick(['Quante stelle…','La luna!']) : pick(['Che bel sole!','Una nuvola a forma di torta!']), .6); } }
@@ -1655,8 +1929,8 @@ function brain(dt){
         const toCenter = Math.sign(W/2 - ball.x) || 1;
         const dirK = b.type === 'fetch' ? toCenter : (Math.sign(ball.x - pet.x) || 1);
         ball.vx = dirK * (b.type === 'fetch' ? rf(160, 260) : rf(320, 620)); ball.vy = -(b.type === 'fetch' ? rf(80, 160) : rf(250, 520)); ball.ground = false;
-        sfx.pop(); squish(.2); budgetXp(1); s.fun = clamp(s.fun + 1);
-        b.kicks = (b.kicks || 0) + 1;
+        sfx.pop(); squish(.2); budgetXp(1); s.fun = clamp(s.fun + 1); ball.by = 'blob';
+        b.kicks = (b.kicks || 0) + 1; mission('kicks');
         if (state.wish && state.wish.type === 'ball') wishProgress('ball', 1, 3);
         if (b.type === 'fetch' && Math.abs(ball.x - W/2) < W * .2){ b.done = true; chat('Eccola!', 1); if (Math.random() < .25){ addCoins(1); floatText('+1', pet.x, pet.y - R); sfx.coin(); } }
         if (b.type === 'ball' && b.kicks > 2) b.done = true;
@@ -1664,12 +1938,17 @@ function brain(dt){
       break; }
     case 'chaseEv': {
       if (!ev){ b.done = true; break; }
-      let tx = pet.x, ty = pet.y;
-      if (ev.type === 'butterfly'){ tx = ev.x; ty = ev.y; }
-      else { const al = ev.items.filter(i => i.alive); if (al.length){ const n = al.reduce((a, c) => Math.abs(c.x - pet.x) < Math.abs(a.x - pet.x) ? c : a); tx = n.x; ty = n.y; } }
-      pet.look = {x: tx, y: ty};
-      walkTo(lim(tx, R, W - R), dt, 1.6);
-      if (Math.abs(tx - pet.x) < R && pet.ground && ty < pet.y - R && Math.random() < dt * 1.5){ pet.vy = -H * rf(1.1, 1.6); pet.ground = false; sfx.boing(); }
+      const tg = evTarget(); if (!tg){ b.done = true; break; }
+      pet.look = tg;
+      walkTo(lim(tg.x, R, W - R), dt, ev.type === 'mouse' ? 1.9 : 1.6);
+      if (ev.type !== 'mouse' && Math.abs(tg.x - pet.x) < R && pet.ground && tg.y < pet.y - R && Math.random() < dt * 1.5){ pet.vy = -H * rf(1.1, 1.6); pet.ground = false; sfx.boing(); }
+      break; }
+    case 'scared': {
+      if (!ev || ev.done){ b.done = true; break; }
+      const tx = ev.type === 'ghost' ? (ev.x < W / 2 ? W - R * 1.2 : R * 1.2) : W * .5;
+      walkTo(tx, dt, 1.4); setExpr('shy', .3); pet.wob = Math.max(pet.wob, .5);
+      if (ev.type === 'ghost') pet.look = {x: ev.x, y: ev.y};
+      if (!b.said){ b.said = 1; chat(pick(['Ho paura!','Aiuto!','Mamma mia…']), 1); }
       break; }
     case 'dig':
       if (!ev){ b.done = true; break; }
@@ -1705,10 +1984,41 @@ function brain(dt){
           setTimeout(() => { if (!state || state.messes.some(m => m.type === 'pot')) return; fallingPot = {x: W * .8, y: H * .3 - 18, vy: 0, rot: 0}; }, 380); }
       } else {
         if (!b.x) b.x = rf(.42, .66);
-        if (walkTo(b.x * W, dt)){ pet.wob = .6; b.d = (b.d || 0) + dt; pet.look = {x: b.x * W, y: H * .5};
+        if (walkTo(b.x * W, dt)){ pet.wob = .6; b.d = (b.d || 0) + dt; pet.look = {x: b.x * W, y: H * .6};
           if (b.d > 1.6 && !b.ok){ b.ok = 1; if (s.messes.length < 2){ s.messes.push({type:'doodle', x: b.x, seed: rnd(1, 9999)}); say(pick(['Ho fatto un disegno! Ti piace?','Un capolavoro sul muro!']), 2400); saveSoon(); } b.done = true; } }
       }
       break; }
+    case 'shoot': {
+      const h = HOOP();
+      if (ball.held){ b.done = true; break; }
+      if (!b.phase){
+        pet.look = {x: ball.x, y: ball.y};
+        if (Math.hypot(ball.vx, ball.vy) > 60){ b.done = true; break; }
+        if (walkTo(ball.x - Math.sign(ball.x - pet.x || 1) * R * .7, dt, 1.3)){ b.phase = 1; b.t2 = 0; chat(pick(['Guarda qua!','Tiro da tre!','Occhio al canestro!']), .8); }
+      } else if (b.phase === 1){
+        pet.look = {x: h.x, y: h.y}; b.t2 += dt;
+        if (b.t2 > .55){
+          const T = rf(.75, 1), hit = Math.random() < .5;
+          const tx = h.x + (hit ? rf(-h.w * .15, h.w * .15) : pick([-1, 1]) * rf(h.w * .55, h.w * .9)), ty = h.y - 4;
+          ball.ground = false; ball.y = Math.min(ball.y, FLOOR - ball.r - 2); ball.by = 'blob';
+          ball.vx = (tx - ball.x) / T; ball.vy = (ty - ball.y - .5 * G() * T * T) / T;
+          pet.vy = -H * .6; pet.ground = false; sfx.boing(); b.phase = 2; b.until = Date.now() + 2500;
+        }
+      }
+      break; }
+    case 'sing':
+      pet.hop = 0; setExpr('happy', .3);
+      if (b.t % .45 < dt){ burst('note', 1); sfx.note(); }
+      if (!b.said){ b.said = 1; chat(pick(['La la laaa ♪','Do re mi blob ♪','♪ Bloppy bloppy ♪']), 1); }
+      break;
+    case 'tail':
+      if (!pet.anim && b.t < 1.8) pet.anim = {type:'spin', t:0, dur:.6};
+      if (b.t > 1.9 && !b.d){ b.d = 1; setExpr('dizzy', 1.6); chat(pick(['Mi sono girato da solo…','Ho rincorso la mia coda. Non ho la coda.']), .9); b.until = Date.now() + 1800; }
+      break;
+    case 'mimic':
+      if (!b.d){ b.d = 1; const tricks = LEVELS.slice(0, s.level).filter(l => l.trick).map(l => l.trick); const tr = pick(tricks);
+        chat('Guarda cosa so fare!', 1); setTimeout(() => { if (awake() && !pet.held && pet.ground) doTrick(tr, undefined, true); }, 800); b.until = Date.now() + 3000; }
+      break;
     case 'eatFloor': {
       const f = b.food;
       if (!floorFood.includes(f)){ b.done = true; break; }
@@ -1744,13 +2054,16 @@ function physics(dt){
     if (a.t > a.dur && a.type !== 'flip'){ pet.anim = null; pet.rot = 0; }
   }
   if (!pet.ground){
+    const ppy = pet.y;
     pet.vy += g * dt; pet.x += pet.vx * dt; pet.y += pet.vy * dt; pet.rot += pet.vr * dt;
-    if (pet.x < R){ pet.x = R; pet.vx = Math.abs(pet.vx) * .55; squish(.2); sfx.boing(); }
-    if (pet.x > W - R){ pet.x = W - R; pet.vx = -Math.abs(pet.vx) * .55; squish(.2); sfx.boing(); }
-    if (pet.y < RY){ pet.y = RY; pet.vy = Math.abs(pet.vy) * .4; squish(.25); sfx.boing(); }
+    const thrown = pet.airFrom && !pet.anim;
+    if (pet.x < R){ pet.x = R; pet.vx = Math.abs(pet.vx) * .55; squish(.2); sfx.boing(); if (thrown && Math.abs(pet.vx) > 60) mission('bounceWall'); }
+    if (pet.x > W - R){ pet.x = W - R; pet.vx = -Math.abs(pet.vx) * .55; squish(.2); sfx.boing(); if (thrown && Math.abs(pet.vx) > 60) mission('bounceWall'); }
+    if (pet.y < RY){ pet.y = RY; pet.vy = Math.abs(pet.vy) * .4; squish(.25); sfx.boing(); if (thrown) mission('ceiling'); }
+    { const h = HOOP(); if (thrown && ppy < h.y && pet.y >= h.y && pet.vy > 0 && Math.abs(pet.x - h.x) < h.w / 2 + R * .3) dunk(); }
     // urto con la palla in volo
     const db = Math.hypot(ball.x - pet.x, ball.y - pet.y);
-    if (db < R + ball.r && !ball.held){ const nx = (ball.x - pet.x) / db, ny = (ball.y - pet.y) / db; ball.vx = nx * 600 + pet.vx * .5; ball.vy = ny * 600; ball.ground = false; ball.x = pet.x + nx * (R + ball.r + 1); ball.y = pet.y + ny * (R + ball.r + 1); sfx.pop(); }
+    if (db < R + ball.r && !ball.held){ ball.by = 'you'; const nx = (ball.x - pet.x) / db, ny = (ball.y - pet.y) / db; ball.vx = nx * 600 + pet.vx * .5; ball.vy = ny * 600; ball.ground = false; ball.x = pet.x + nx * (R + ball.r + 1); ball.y = pet.y + ny * (R + ball.r + 1); sfx.pop(); }
     if (pet.y >= groundY()){
       pet.y = groundY();
       const impact = pet.vy;
@@ -1765,6 +2078,8 @@ function physics(dt){
         if (pet.airFrom){
           const height = (groundY() - Math.min(pet.airFrom, pet.y)) ;
           pet.airFrom = 0;
+          if (pet.airStart && (performance.now() - pet.airStart) / 1000 >= 2) mission('airtime');
+          pet.airStart = 0;
           const recent = pet.throws.filter(t => Date.now() - t < 30000).length;
           if (recent >= 5){ setExpr('dizzy', 2.5); say('Mi gira tutto…', 2000); s.fun = clamp(s.fun - 2); pet.throws = []; }
           else if (s.trust >= 35 && s.energy > 15){ setExpr('happy', 1.2); s.fun = clamp(s.fun + 2.5); s.energy = clamp(s.energy - .8); budgetXp(1); chat(pick(['Ancora!','Di nuovo!','Wiii!']), .7); }
@@ -1774,12 +2089,21 @@ function physics(dt){
     }
   } else {
     pet.y = groundY();
+    if (!(pet.beh && pet.beh.type === 'enter')) pet.x = lim(pet.x, R, W - R);
   }
   // palla
   if (!ball.held){
     const br = ball.r;
     if (!ball.ground){
+      const bpy = ball.y, h = HOOP();
       ball.vy += g * dt; ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+      for (const ex of [h.x - h.w / 2, h.x + h.w / 2]){
+        const dx = ball.x - ex, dy = ball.y - h.y, d = Math.hypot(dx, dy) || 1;
+        if (d < br + 3){ const nx = dx / d, ny = dy / d, vn = ball.vx * nx + ball.vy * ny;
+          if (vn < 0){ ball.vx -= 1.7 * vn * nx; ball.vy -= 1.7 * vn * ny; tone(700, .05, 'square', .04); }
+          ball.x = ex + nx * (br + 3); ball.y = h.y + ny * (br + 3); }
+      }
+      if (bpy < h.y && ball.y >= h.y && ball.vy > 0 && Math.abs(ball.x - h.x) < h.w / 2 - br * .4) scoreHoop(ball.by || 'you');
       if (ball.x < br){ ball.x = br; ball.vx = Math.abs(ball.vx) * .7; }
       if (ball.x > W - br){ ball.x = W - br; ball.vx = -Math.abs(ball.vx) * .7; }
       if (ball.y < br){ ball.y = br; ball.vy = Math.abs(ball.vy) * .6; }
@@ -1803,6 +2127,54 @@ function physics(dt){
     fallingPot.vy += g * dt; fallingPot.y += fallingPot.vy * dt; fallingPot.rot += 6 * dt;
     if (fallingPot.y > FLOOR - 14){ fallingPot = null; if (state && state.messes.length < 2){ state.messes.push({type:'pot'}); sfx.sad(); say('Ops… è caduta la piantina!', 2200); setExpr('shy', 2); burst('crumb', 12, W * .83, FLOOR - 10); saveSoon(); } }
   }
+}
+
+/* ---------- canestro ---------- */
+const HOOP = () => ({x: W * .5, y: H * .4, w: Math.max(W * .15, ball.r * 3.8)});
+let hoopFx = 0, hoopStreak = 0, lastHoopAt = 0, hoopCoins = 6, lastHoopRefill = Date.now(), lastDunk = 0;
+function scoreHoop(by){
+  const s = state, h = HOOP(), now = Date.now();
+  hoopFx = 1; tone(1400, .18, 'sine', .08, .4);
+  if (by === 'you'){
+    hoopCoins = Math.min(6, hoopCoins + (now - lastHoopRefill) / 120000); lastHoopRefill = now;
+    hoopStreak = now - lastHoopAt < 12000 ? hoopStreak + 1 : 1; lastHoopAt = now;
+    s.hoops++;
+    let c = 0; if (hoopCoins >= 1){ hoopCoins--; c = hoopStreak >= 3 ? 2 : 1; addCoins(c); sfx.coin(); floatText(`+${c}`, h.x + h.w, h.y); }
+    floatText(hoopStreak > 1 ? `Canestro x${hoopStreak}!` : 'Canestro!', h.x, h.y - H * .12, '#ff6fae');
+    if (hoopStreak > s.records.hoop) s.records.hoop = hoopStreak;
+    mission('hoop'); fulfill('hoop'); budgetXp(1);
+    if (s.hoops >= 10 && giveSticker(s, 'canestro')) toast('Nuova figurina: 🏀 Cecchino!');
+    if (awake()){ setExpr('happy', 1.5); if (pet.ground && !pet.held){ pet.vy = -H * .7; pet.ground = false; } chat(pick(['Canestro!!','Che tiro!','Sei un campione!','Ancora uno!']), .8); }
+  } else {
+    floatText('Canestro!', h.x, h.y - H * .12, '#a893ff');
+    if (awake()){ setExpr('happy', 2); say(pick(['Ho fatto canestro! Hai visto?!','Tre punti per me!','Sono un fenomeno!']), 2000); s.fun = clamp(s.fun + 3); burst('heart', 4); }
+  }
+  saveSoon();
+}
+function dunk(){
+  const s = state, h = HOOP(), now = Date.now();
+  if (now - lastDunk < 3000) return; lastDunk = now;
+  hoopFx = 1.5; burst('confetti', 24, h.x, h.y); sfx.level();
+  floatText('Schiacciata!', h.x, h.y - H * .12, '#ff6fae');
+  const nw = giveSticker(s, 'schiacciata');
+  addCoins(2); budgetXp(3); mission('dunk'); fulfill('dunk');
+  say(nw ? 'Schiacciata! Nuova figurina: 💥' : pick(['Schiacciata!!','Sono volato nel canestro!']), 2000);
+  saveSoon();
+}
+function drawHoopBack(){
+  const h = HOOP();
+  ctx.fillStyle = tokens.panel; ctx.strokeStyle = tokens.line; ctx.lineWidth = 2;
+  roundRect(h.x - h.w * .7, h.y - H * .11, h.w * 1.4, H * .1, 8); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#ff8fbf'; ctx.lineWidth = 2.5; roundRect(h.x - h.w * .28, h.y - H * .07, h.w * .56, H * .055, 3); ctx.stroke();
+}
+function drawHoopFront(t){
+  const h = HOOP(), hw = h.w / 2, nh = H * .075, wig = Math.sin(t * 30) * hoopFx * 4;
+  hoopFx = Math.max(0, hoopFx - .02);
+  ctx.strokeStyle = 'rgba(160,120,150,.7)'; ctx.lineWidth = 1.5;
+  for (let i = 0; i <= 5; i++){ const f = i / 5; ctx.beginPath(); ctx.moveTo(h.x - hw + f * h.w, h.y); ctx.lineTo(h.x - hw * .55 + f * hw * 1.1 + wig, h.y + nh); ctx.stroke(); }
+  for (const k of [.45, .85]){ ctx.beginPath(); ctx.moveTo(h.x - hw * (1 - k * .45) + wig * k, h.y + nh * k); ctx.lineTo(h.x + hw * (1 - k * .45) + wig * k, h.y + nh * k); ctx.stroke(); }
+  ctx.strokeStyle = '#ff6f6f'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(h.x - hw, h.y); ctx.lineTo(h.x + hw, h.y); ctx.stroke();
 }
 
 /* ---------- disegno ---------- */
@@ -1838,6 +2210,8 @@ function drawRoom(t, night){
   if (ev && ev.type === 'star'){ const p = ev.t / ev.life, sx = wx + ww*(.1 + p*.9), sy = wy + wh*(.15 + p*.5);
     const gr = ctx.createLinearGradient(sx - ww*.4, sy - wh*.2, sx, sy); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(1, '#fff6c8');
     ctx.strokeStyle = gr; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx - ww*.4, sy - wh*.2); ctx.lineTo(sx, sy); ctx.stroke(); ctx.fillStyle = '#fff'; star4(sx, sy, 6); }
+  if (ev && ev.type === 'storm'){ ctx.fillStyle = 'rgba(40,40,80,.55)'; ctx.fillRect(wx, wy, ww, wh); ctx.strokeStyle = 'rgba(210,225,255,.85)'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 16; i++){ const rx = wx + ((i * 37 + t * 160) % ww), ry = wy + ((i * 53 + t * 420) % wh); ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 4, ry + 10); ctx.stroke(); } }
   if (ev && ev.type === 'rainbow'){ const cols = ['#ff7b7b','#ffb36b','#ffe26b','#7be08a','#7bc4ff','#a993ff'];
     ctx.lineWidth = Math.max(3, ww*.04); ctx.globalAlpha = Math.min(1, ev.t, ev.life - ev.t);
     cols.forEach((c, i) => { ctx.strokeStyle = c; ctx.beginPath(); ctx.arc(wx + ww*.5, wy + wh*1.05, ww*(.55 - i*.045), Math.PI, 0); ctx.stroke(); }); ctx.globalAlpha = 1; }
@@ -1845,12 +2219,13 @@ function drawRoom(t, night){
   ctx.fillStyle = tokens.panel; ctx.fillRect(wx + ww/2 - 2, wy, 4, wh); ctx.fillRect(wx, wy + wh/2 - 2, ww, 4);
   // disegni sul muro
   if (state) for (const m of state.messes) if (m.type === 'doodle'){
-    const cx = m.x * W, cy = H * .5; let sd = m.seed;
+    const cx = m.x * W, cy = H * .6; let sd = m.seed;
     const r2 = () => ((sd = (sd * 9301 + 49297) % 233280) / 233280);
     ctx.strokeStyle = ['#ff6fae','#7cc8ff','#ffb52e'][m.seed % 3]; ctx.lineWidth = 3; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(cx - R*.4, cy); for (let i = 0; i < 7; i++) ctx.lineTo(cx + (r2() - .5) * R * .9, cy + (r2() - .5) * R * .6); ctx.stroke();
     ctx.beginPath(); ctx.arc(cx + R*.15, cy - R*.1, R*.15, 0, 7); ctx.stroke();
   }
+  drawHoopBack();
   // mensola
   const sx = W*.72, sy = H*.3;
   ctx.fillStyle = tokens.panel; roundRect(sx, sy, W*.2, 7, 3); ctx.fill();
@@ -2005,6 +2380,16 @@ function drawPet(t){
   if (s.hat) emoji(HATS[s.hat].e, R*.06, -ry*.98, R*.62, -.14);
   ctx.restore();
   if (m === 'dizzy'){ ctx.fillStyle = '#ffcf3f'; for (let i = 0; i < 3; i++){ const a = t*4 + i*2.1; star5(pet.x + Math.cos(a)*R*.7, pet.y - RY*1.05 + Math.sin(a)*R*.15, R*.09); } }
+  if (m === 'sleep'){
+    const dreams = ['⚽','🦋','🍦','🌈','🧸','🏀','⭐', FOODS[s.traits.favFood].e];
+    const de = dreams[Math.floor(t / 4) % dreams.length];
+    const bx = lim(pet.x - R * 1.05, R * .5, W - R * .5), by = Math.max(R * .5, pet.y - RY - R * .55);
+    ctx.globalAlpha = .9; ctx.fillStyle = tokens.panel;
+    ctx.beginPath(); ctx.arc(pet.x - R * .45, pet.y - RY * .85, R * .06, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(pet.x - R * .7, pet.y - RY * 1.05, R * .1, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx, by, R * .42, R * .32, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+    emoji(de, bx, by, R * .36);
+  }
   if (m === 'sleep'){ ctx.fillStyle = tokens.ink;
     for (let i = 0; i < 3; i++){ const p = (t*.5 + i/3) % 1; ctx.globalAlpha = 1 - p; ctx.font = `${Math.round(R*(.16 + p*.14))}px "Mochiy Pop One", sans-serif`;
       ctx.fillText('z', pet.x + rx*.7 + p*R*.4, pet.y - ry*.6 - p*R*.8); } ctx.globalAlpha = 1; }
@@ -2037,6 +2422,14 @@ function drawEvent(t){
     ctx.strokeStyle = 'rgba(124,200,255,.9)'; ctx.lineWidth = 2; ctx.fillStyle = 'rgba(200,235,255,.25)';
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill(); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.beginPath(); ctx.arc(b.x - b.r*.35, b.y - b.r*.35, b.r*.2, 0, 7); ctx.fill(); }
+  if (ev.type === 'starRain') for (const b of ev.items){ if (!b.alive) continue; ctx.fillStyle = '#ffd24a'; star5(b.x, b.y, Math.max(9, W * .028)); ctx.fillStyle = '#fff'; star4(b.x + 6, b.y - 6, 3 + Math.abs(Math.sin(t * 8 + b.ph)) * 3); }
+  if (ev.type === 'mouse'){ ctx.save(); ctx.translate(ev.x, ev.y - R * .12 - Math.abs(Math.sin(t * 22)) * 3); ctx.scale(ev.dir > 0 ? -1 : 1, 1); emoji('🐁', 0, 0, R * .5); ctx.restore(); }
+  if (ev.type === 'balloon'){ ctx.strokeStyle = tokens.ink; ctx.globalAlpha = .4; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(ev.x, ev.y + R * .3);
+    for (let i = 1; i <= 6; i++) ctx.lineTo(ev.x + Math.sin(t * 3 + i) * 4, ev.y + R * .3 + i * R * .12); ctx.stroke(); ctx.globalAlpha = 1; emoji('🎈', ev.x, ev.y, R * .7); }
+  if (ev.type === 'ghost'){ ctx.globalAlpha = ev.a * (.7 + .3 * Math.sin(t * 4)); emoji('👻', ev.x, ev.y, R * .75); ctx.globalAlpha = 1; }
+  if (ev.type === 'letter') emoji('✉️', ev.x, FLOOR - 10, R * .45, Math.sin(t * 3) * .08);
+  if (ev.type === 'bird'){ emoji('🐦', ev.x, ev.y - (ev.landed ? Math.abs(Math.sin(t * 6)) * 2 : 0), R * .42); }
+  if (ev.type === 'storm'){ ctx.fillStyle = 'rgba(30,30,70,.14)'; ctx.fillRect(0, 0, W, H); if (ev.flash > 0){ ctx.fillStyle = `rgba(255,255,255,${ev.flash * .55})`; ctx.fillRect(0, 0, W, H); } }
   if (ev.type === 'glint'){ ctx.fillStyle = '#fff4b0'; const s = 6 + Math.abs(Math.sin(t*6))*8; star4(ev.x, FLOOR - 6, s); ctx.fillStyle = '#ffd24a'; star4(ev.x + 9, FLOOR - 14, s*.45); }
   if (ev.type === 'visitor'){
     const x = ev.x, y = groundY() - Math.abs(Math.sin(t*5))*R*.1, r = R*.75;
@@ -2086,6 +2479,7 @@ function frame(now){
     if (ball.y < pet.y) drawBall();
     drawPet(t);
     if (ball.y >= pet.y) drawBall();
+    drawHoopFront(t);
     if (ev && ev.type !== 'glint' && ev.type !== 'visitor') drawEvent(t);
     drawParticles(dt);
     if (s && s.sleeping && !s.walk){ ctx.fillStyle = 'rgba(30,15,60,.32)'; ctx.fillRect(0, 0, W, H); }
@@ -2142,6 +2536,11 @@ function finishGame(id, score){
   if (newFav) log(s, Date.now(), `Scoperto: il gioco preferito di ${s.name} è ${GAMES[id].n}.`);
   if (rec && score >= 3) log(s, Date.now(), `Nuovo record a ${GAMES[id].n}: ${score} ${GAMES[id].unit}!`);
   fulfill('game', id);
+  mission('games', 1, id);
+  if (rec && score > 0) mission('record');
+  if (id === 'memory' && score >= 5) mission('memory5');
+  if (id === 'catch' && score >= 15) mission('catch15');
+  if (id === 'hide' && score >= 3) mission('hide3');
   save(); render(true);
   $('gScore').textContent = `Record ${s.records[id]}`;
   $('gMsg').textContent = `${rec && score ? 'Nuovo record! ' : ''}+${coins} stelline.` + (newFav ? ' Si vede che è il suo gioco preferito!' : fav ? ' Il suo preferito: bonus!' : '');
@@ -2312,6 +2711,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) tick
 window.addEventListener('pagehide', () => { if (state) save(); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.claude) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
+if (location.hash === '#debug') window.__bb = {ev: t => { ev = null; startEvent(t); }, get e(){ return ev; }, pet, ball, hoop: () => HOOP(), get W(){ return W; }, get H(){ return H; }, get s(){ return state; }, ensureDay};
 initRemote();
 })();
 </script>
