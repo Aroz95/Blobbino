@@ -246,6 +246,10 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
 .dx.miss{border-color:var(--line);box-shadow:none}
 .rarline{text-align:center;font-weight:800;font-size:13px;margin:2px 0 6px}
 .dexbig{display:block;width:180px;height:180px;margin:0 auto}
+.bodies{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 8px}
+.bodies figure{margin:0;text-align:center;background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:4px}
+.bodies canvas{display:block;width:100%;aspect-ratio:1/1}
+.bodies figcaption{font-size:12px;font-weight:800}
 .big-em{font-size:56px;text-align:center;line-height:1.1}
 .sheet-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 
@@ -364,7 +368,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 20</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 21</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -935,7 +939,19 @@ const learned = tr => !!state && LEVELS.slice(0, state.level).some(l => l.trick 
 const perk = p => !!state && LEVELS.slice(0, state.level).some(l => l.perk === p);
 
 /* evoluzione: le scelte di gioco decidono la forma */
+/* corporatura: magro se ha fame, obeso se mangia oltre il pieno */
+const BODY = {magro:{n:'Magro', e:'🦴', tip:'Ha fame: dagli da mangiare'}, normale:{n:'Normale', e:'💪', tip:'In forma'}, obeso:{n:'Obeso', e:'🍩', tip:'Ha mangiato troppo: fallo giocare per farlo dimagrire'}};
+function bodyOf(b){ if (!b || b.stage === 'egg') return 'normale'; if ((b.fat || 0) >= 20) return 'obeso'; if (b.hunger < 50) return 'magro'; return 'normale'; }
+function bodyShape(b){
+  if (!b || b.stage === 'egg') return {x:1, y:1};
+  const f = Math.min(1, (b.fat || 0) / 80);
+  if (f > 0) return {x: 1 + .34*f, y: 1 - .05*f};
+  const k = Math.max(0, Math.min(1, (50 - (b.hunger ?? 100)) / 40));
+  return {x: 1 - .26*k, y: 1 + .05*k};
+}
+function burnFat(s, n){ if (s && s.fat > 0){ const was = bodyOf(s); s.fat = Math.max(0, s.fat - n); if (was === 'obeso' && bodyOf(s) !== 'obeso'){ log(s, Date.now(), `${nm(s)} è tornato in forma!`); if (state && s.id === state.id) say(`${nm(s)} è tornato in forma! 💪`, 2200); } } }
 function note(k, n = 1){
+  if (state && ['throw','ball','game','walk','trick','tickle'].includes(k)) burnFat(state, (k === 'walk' ? 8 : k === 'game' ? 4 : 1.5) * n);
   const s = state; if (!s || s.stage === 'egg' || s.stage === 'adult') return;
   s.care[k] = (s.care[k] || 0) + n;
   const h = new Date().getHours(); if (h >= 21 || h < 6) s.care.night = (s.care.night || 0) + n * .5;
@@ -988,6 +1004,7 @@ function simulate(s, to){
       s.poopClock += h * (sl ? .4 : 1);
       if (s.poopClock >= 3.5){ s.poopClock -= 3.5; if (s.poops < 3){ s.poops++; ev = true; } }
     }
+    if (s.fat > 0){ s.fat = Math.max(0, s.fat - 3*h); if (s.hunger < 55){ const m = Math.min(s.fat, 55 - s.hunger); s.hunger += m*.8; s.fat -= m; } }
     for (const [key] of STATS) if (key !== 'health') s[key] = clamp(s[key]);
     const c = core(s);
     if (s.sick) s.health -= 4*h; else if (c > 45) s.health += 3*h;
@@ -1613,6 +1630,7 @@ const statEls = {};
     d.innerHTML = `<div class="row"><span>${l}</span><span>0</span></div><div class="bar"><i style="background:${statColor[k]}"></i></div>`;
     $('stats').appendChild(d); statEls[k] = d;
   }
+  const bd = document.createElement('p'); bd.id = 'bodyLine'; bd.className = 'shopnote'; bd.style.cssText = 'grid-column:1/-1;margin:0'; $('stats').appendChild(bd);
 })();
 
 const HINTS = {
@@ -1713,6 +1731,7 @@ function render(full){
     el.querySelector('i').style.width = (egg ? 0 : v) + '%';
     el.classList.toggle('low', !egg && v < 25);
   }
+  { const bl = $('bodyLine'); if (egg || !s){ bl.textContent = ''; } else { const bo = bodyOf(s), B = BODY[bo]; bl.innerHTML = `Corporatura: <b>${B.e} ${B.n}</b> · ${B.tip}${bo === 'obeso' ? ` (${Math.round(s.fat)}%)` : ''}`; } }
   const live = s && !egg && !s.walk;
   const wishTool = w && ({food:'food', cuddle:'hand', ball:'hand', throw:'hand', trick:'hand', hoop:'hand', dunk:'hand', tickle:'hand', bath:'sponge', game:'play', walk:'walk'})[w.type];
   document.querySelectorAll('.tool').forEach(b => {
@@ -1962,10 +1981,11 @@ $('dex').addEventListener('click', e => {
   const ab = st === 'adult' ? F.ab : st === 'child' ? FORMS[VARS.child[k].fam].ab : st === 'baby' ? 'Appena nato, tutto da scoprire.' : '';
   openSheet(got ? I.n : '???', `<div class="loot"><canvas class="dexbig" id="dexBig" aria-label="${got ? esc(I.n) : 'Non ancora scoperto'}"></canvas>
     <p class="rarline" style="color:${RAR[I.r].c}">${rarStars(I.r)} ${RAR[I.r].n}</p>
-    ${got && ab ? `<p class="story">${ab}</p>` : ''}<p class="shopnote">${dexHow(st, k)}</p>
+    ${got && ab ? `<p class="story">${ab}</p>` : ''}${got && st !== 'egg' ? `<div class="bodies">${['magro','normale','obeso'].map(bk => `<figure><canvas data-body="${bk}" aria-label="${BODY[bk].n}"></canvas><figcaption>${BODY[bk].n}</figcaption></figure>`).join('')}</div>` : ''}<p class="shopnote">${dexHow(st, k)}</p>
     ${st !== 'egg' ? (got && got.shiny ? '<p class="shopnote">✨ Hai trovato anche la versione dorata!</p>' : got ? '<p class="shopnote">Esiste anche una rarissima versione dorata.</p>' : '') : ''}
     ${got ? `<p class="shopnote">Scoperto il ${new Date(got.t).toLocaleDateString('it-IT')}.</p>` : ''}</div>
-    <div class="sheet-actions"><button class="btn" data-close type="button">Chiudi</button></div>`, body => requestAnimationFrame(() => { const b = specOf(st, k); if (got && got.shiny && st !== 'egg') b.shiny = true; drawSpecimen(body.querySelector('#dexBig'), b, !got); }));
+    <div class="sheet-actions"><button class="btn" data-close type="button">Chiudi</button></div>`, body => requestAnimationFrame(() => { const b = specOf(st, k); if (got && got.shiny && st !== 'egg') b.shiny = true; drawSpecimen(body.querySelector('#dexBig'), b, !got);
+      body.querySelectorAll('[data-body]').forEach(c => { const v = Object.assign({}, b, c.dataset.body === 'magro' ? {hunger: 10} : c.dataset.body === 'obeso' ? {fat: 90} : {}); drawSpecimen(c, v, false); }); }));
 });
 
 /* ================= azioni dei pulsanti ================= */
@@ -2489,6 +2509,7 @@ function release(vel){
   pet.held = false;
   pet.vx = lim(vel.x, -2400, 2400); pet.vy = lim(vel.y, -2600, 2600);
   if (isForm('razzo')){ pet.vx *= 1.4; pet.vy *= 1.5; sfx.wee(); }
+  if (bodyOf(state) === 'obeso'){ pet.vx *= .75; pet.vy *= .78; }
   note('throw');
   pet.vr = lim(pet.vx / (R * 4), -12, 12);
   pet.airFrom = pet.y; pet.airStart = performance.now();
@@ -2618,9 +2639,18 @@ function eat(id, byHand, fx, fy){
     return true;
   }
   if (s.hunger >= 97){
-    say('Ha la pancia piena!'); setExpr('shy', 1);
-    if (byHand) floorFood.push({id, x: fx, y: fy, vy: 0, t: Date.now()});
-    return false;
+    if ((s.fat || 0) >= 100 || id === s.traits.hateFood){
+      say((s.fat || 0) >= 100 ? 'Non ce la fa proprio più!' : 'Ha la pancia piena!'); setExpr('yuck', 1.2);
+      if (byHand) floorFood.push({id, x: fx, y: fy, vy: 0, t: Date.now()});
+      return false;
+    }
+    const was = bodyOf(s);
+    pet.anim = {type:'eat', t:0, dur:.9}; sfx.chomp();
+    s.fat = Math.min(100, (s.fat || 0) + F.hunger * .7 + (F.sweet ? 6 : 0)); s.fun = clamp(s.fun + F.fun * .5);
+    squish(.25);
+    if (was !== 'obeso' && bodyOf(s) === 'obeso'){ log(s, Date.now(), `${n} ha mangiato troppo ed è diventato obeso.`); say(`Troppo cibo! ${n} sta diventando obeso 🍩`, 2600); }
+    else say(pick(['Era già pieno… ma che buono!', 'Burp! Ancora?', 'Un altro boccone… solo uno!', 'Pancia piena piena!']), 1600);
+    saveSoon(); return true;
   }
   if (byHand && s.trust < 35 && Math.random() < .4){
     say(`${n} ti guarda di sbieco e non mangia dalla tua mano.`); setExpr('shy', 1.5);
@@ -2919,7 +2949,7 @@ function walkTo(tx, dt, speedMul = 1){
   const dx = tx - pet.x;
   if (Math.abs(dx) < 4){ pet.hop = 0; return true; }
   pet.dir = Math.sign(dx);
-  const sp = R * 2.4 * speedMul * (state.energy < 25 ? .6 : 1);
+  const bo = bodyOf(state), sp = R * 2.4 * speedMul * (state.energy < 25 ? .6 : 1) * (bo === 'obeso' ? .65 : bo === 'magro' ? .85 : 1);
   pet.x += Math.sign(dx) * Math.min(Math.abs(dx), sp * dt);
   pet.hop += dt * 9;
   return false;
@@ -4049,7 +4079,7 @@ function drawPet(t, s = state, P = pet, guest = false){
   if (s.shiny){ ctx.fillStyle = '#ffe27a'; for (let i = 0; i < 3; i++){ const a = t*1.3 + i*2.1; ctx.globalAlpha = .5 + .5*Math.sin(t*4 + i); star4(P.x + Math.cos(a)*R*1.25, P.y + Math.sin(a)*R*.9, R*.08); } ctx.globalAlpha = 1; }
   const breathe = reduced ? 0 : Math.sin(t*(m === 'sleep' ? 1.2 : 2.2))*.03;
   const hopY = P.ground && P.hop ? -Math.abs(Math.sin(P.hop)) * R * .14 : 0;
-  const rx = R*(1 + breathe), ry = RY*(1 - breathe);
+  const BSH = bodyShape(s), rx = R*(1 + breathe)*BSH.x, ry = RY*(1 - breathe)*BSH.y;
   const sx = 1 + (1 - P.sq) * .7, sy = P.sq;
   // ombra
   const shH = Math.max(0, (gYl - P.y) / H);
@@ -4103,6 +4133,7 @@ function drawPet(t, s = state, P = pet, guest = false){
   if (s.hygiene < 60){ ctx.fillStyle = 'rgba(140,100,70,.35)'; const n = Math.round((60 - s.hygiene) / 10);
     for (let i = 0; i < n; i++){ const a = i * 2.4, rr = R * (.35 + (i % 3) * .15); ctx.beginPath(); ctx.ellipse(Math.cos(a)*rr, Math.sin(a)*rr*.7 + ry*.1, R*.08, R*.06, a, 0, 7); ctx.fill(); } }
   ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(-rx*.42, -ry*.5, R*.14, R*.08, -.6, 0, 7); ctx.fill();
+  if (BSH.x > 1.08){ ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.beginPath(); ctx.ellipse(0, ry*.42, rx*.5, ry*.26, 0, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = Math.max(1.5, R*.03); ctx.beginPath(); ctx.arc(0, ry*.45, R*.05, 0, 7); ctx.stroke(); }
   if (kind === 'budino'){ ctx.fillStyle = '#b8683a'; ctx.beginPath(); ctx.moveTo(-rx*.72, -ry*.5);
     for (let i = 0; i <= 8; i++) ctx.lineTo(-rx*.72 + rx*1.44*i/8, -ry*.5 + (i % 2 ? R*.18 : R*.02));
     ctx.quadraticCurveTo(0, -ry*1.25, -rx*.72, -ry*.5); ctx.fill();
@@ -4116,7 +4147,7 @@ function drawPet(t, s = state, P = pet, guest = false){
   if (P.look){ const dx = P.look.x - P.x, dy = P.look.y - P.y, d = Math.hypot(dx, dy) || 1; lx = dx / d * R * .1; ly = dy / d * R * .06; }
   else if (m !== 'sleep') lx = Math.sin(t*.5) * R * .03;
   if (m === 'shy' || m === 'distrust') lx -= R * .12;
-  const ex = R*.3, ey = -ry*.08 + ly + ry*(FACE_DY[shape] || 0), fx = lx, er = R*.1;
+  const ex = R*.3*Math.min(1, BSH.x + .1), ey = -ry*.08 + ly + ry*(FACE_DY[shape] || 0), fx = lx, er = R*.1;
   ctx.fillStyle = '#ff8fb3'; ctx.globalAlpha = m === 'love' || m === 'shy' ? .85 : .55;
   ctx.beginPath(); ctx.ellipse(fx - ex*1.45, ey + R*.2, R*.12, R*.07, 0, 0, 7); ctx.ellipse(fx + ex*1.45, ey + R*.2, R*.12, R*.07, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
   if (kind === 'muschio'){ ctx.fillStyle = '#8fb87a'; for (const [dx, dy] of [[-1.3,.05],[-1.1,.12],[1.3,.05],[1.1,.12]]){ ctx.beginPath(); ctx.arc(fx + dx*ex, ey + R*.13 + dy*R, R*.025, 0, 7); ctx.fill(); } }
@@ -4501,7 +4532,7 @@ setInterval(tick, 1000);
 setTimeout(tick, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); else if (state) save(); });
 window.addEventListener('pagehide', () => { if (state) save(); });
-const APP_VERSION = 20;
+const APP_VERSION = 21;
 /* niente zoom su iPhone: né doppio tocco né pizzico */
 document.addEventListener('gesturestart', e => e.preventDefault(), {passive: false});
 document.addEventListener('dblclick', e => e.preventDefault(), {passive: false});
