@@ -185,6 +185,10 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
 .loot{display:flex;flex-direction:column;gap:10px}
 .loot p{margin:0}
 .loot .story{background:var(--panel-2);border-radius:14px;padding:12px;font-size:14px}
+.code{width:100%;min-height:84px;border-radius:14px;border:2px solid var(--line);background:var(--panel-2);color:var(--ink);font:500 12px/1.4 ui-monospace,Menlo,monospace;padding:10px;resize:vertical;word-break:break-all}
+.code:focus{outline:none;border-color:var(--accent)}
+.steps{margin:0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.err{color:var(--warn);font-size:13px;font-weight:700;margin:6px 0 0;min-height:1em}
 .big-em{font-size:56px;text-align:center;line-height:1.1}
 .sheet-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 
@@ -239,6 +243,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
           <button class="btn" type="submit">Accogli l'uovo</button>
         </div>
         <p>L'uovo si schiude in meno di un minuto. Intanto puoi accarezzarlo per scaldarlo.</p>
+        <button class="linkbtn" id="importLink" type="button" style="align-self:flex-start;padding:0">Hai già un blob su un altro dispositivo? Trasferiscilo</button>
       </form>
     </div>
 
@@ -280,6 +285,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     <div class="foot">
       <span id="saveNote">Salvato su questo dispositivo</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
+      <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
       <span id="resetWrap"><button class="linkbtn" id="resetBtn" type="button">Ricomincia da capo</button></span>
     </div>
   </section>
@@ -1118,6 +1124,58 @@ $('soundBtn').addEventListener('click', () => {
   try { localStorage.setItem('blobbino-sound', sound ? 'on' : 'off'); } catch {}
 });
 $('soundBtn').textContent = `Suoni: ${sound ? 'sì' : 'no'}`;
+
+/* ================= trasferimento ================= */
+function encodeSave(){
+  const json = JSON.stringify({v:3, state});
+  return 'BLOB1:' + btoa(unescape(encodeURIComponent(json)));
+}
+function decodeSave(code){
+  const c = String(code).trim().replace(/\s+/g, '');
+  const body = c.startsWith('BLOB1:') ? c.slice(6) : c;
+  const data = JSON.parse(decodeURIComponent(escape(atob(body))));
+  if (!data || !data.state || !data.state.name || !data.state.stage) throw new Error('vuoto');
+  return data.state;
+}
+function openTransfer(){
+  const has = !!state;
+  openSheet('Trasferisci il tuo blob', `
+    ${has ? `<p class="shopnote" style="margin-bottom:8px"><b>Da qui a un altro posto.</b> Safari e l'app sulla schermata Home tengono i dati separati: copia questo codice e incollalo dall'altra parte.</p>
+    <textarea class="code" id="exportCode" readonly aria-label="Codice del tuo blob">${encodeSave()}</textarea>
+    <div class="sheet-actions" style="margin-top:8px"><button class="btn" id="copyCode" type="button">Copia il codice</button></div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">` : ''}
+    <p class="shopnote" style="margin-bottom:8px"><b>Da un altro posto a qui.</b> Incolla il codice copiato da Safari o da un altro dispositivo.</p>
+    <textarea class="code" id="importCode" placeholder="BLOB1:…" aria-label="Incolla qui il codice"></textarea>
+    <p class="err" id="importErr"></p>
+    <div class="sheet-actions" style="margin-top:4px" id="importActions"><button class="btn ${has ? 'ghost' : ''}" id="loadCode" type="button">Carica questo blob</button></div>`, b => {
+    const cp = b.querySelector('#copyCode');
+    if (cp) cp.addEventListener('click', async () => {
+      const ta = $('exportCode');
+      try { await navigator.clipboard.writeText(ta.value); cp.textContent = 'Copiato!'; }
+      catch { ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); cp.textContent = 'Selezionato: tocca Copia'; }
+      setTimeout(() => { cp.textContent = 'Copia il codice'; }, 2500);
+    });
+    $('importCode').addEventListener('input', () => { $('importErr').textContent = ''; });
+    $('loadCode').addEventListener('click', () => {
+      let incoming;
+      try { incoming = decodeSave($('importCode').value); }
+      catch { $('importErr').textContent = $('importCode').value.trim() ? 'Questo codice non funziona. Copialo di nuovo per intero, da BLOB1: fino alla fine.' : 'Incolla prima il codice.'; return; }
+      const doLoad = () => {
+        state = migrate(incoming); simulate(state, Date.now());
+        floorFood = []; ev = null; welcome = true; trayKey = ''; diaryKey = '';
+        log(state, Date.now(), `${state.name} si è trasferito qui. Ciao di nuovo!`);
+        save(); render(true); closeSheet(); say(`Bentornato ${state.name}!`, 2600);
+      };
+      if (!has){ doLoad(); return; }
+      const a = $('importActions');
+      a.innerHTML = `<span class="shopnote" style="flex:1 1 100%">Questo sostituisce ${esc(state.name)} con ${esc(incoming.name)}.</span><button class="btn ghost" id="noLoad" type="button">Annulla</button><button class="btn" id="yesLoad" type="button">Sostituisci</button>`;
+      $('noLoad').onclick = () => openTransfer();
+      $('yesLoad').onclick = doLoad;
+    });
+  });
+}
+$('transferBtn').addEventListener('click', openTransfer);
+$('importLink').addEventListener('click', openTransfer);
 
 /* ================= il mondo della cameretta ================= */
 const cv = $('scene'), ctx = cv.getContext('2d');
