@@ -364,7 +364,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 19</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 20</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -2268,7 +2268,9 @@ const ball = {x:0, y:0, vx:0, vy:0, r:14, ground:true, held:false, spin:0};
 let floorFood = [], dragFood = null, ev = null, nextEvAt = Date.now() + rnd(12, 22)*1000, fallingPot = null;
 let lastTouch = Date.now(), inited = false;
 
+function returnFood(f){ if (world && f && !FREE.includes(f.id)) world.inv[f.id] = (world.inv[f.id] || 0) + 1; }
 function resetScene(){
+  floorFood.forEach(returnFood); if (dragFood && dragFood.paid) returnFood(dragFood);
   floorFood = []; ev = null; particles = []; fallingPot = null; dragFood = null; ptr.down = false;
   nextEvAt = Date.now() + rnd(12, 22) * 1000; flower = null;
   Object.assign(pet, {vx:0, vy:0, ground:true, rot:0, vr:0, sq:1, sqv:0, held:false, beh:null, anim:null, expr:null, look:null, hop:0, wob:0, airFrom:0});
@@ -2344,6 +2346,10 @@ cv.addEventListener('pointerdown', e => {
   e.preventDefault();
   try { cv.setPointerCapture(e.pointerId); } catch {}
   const p = toCanvas(e), now = performance.now();
+  // riprendi il cibo lasciato per terra
+  { let best = null, bd = R * .55;
+    for (const f of floorFood){ const d = Math.hypot(p.x - f.x, p.y - (f.y - R * .15)); if (d < bd){ bd = d; best = f; } }
+    if (best){ floorFood.splice(floorFood.indexOf(best), 1); dragFood = {id: best.id, x: p.x, y: p.y, paid: true}; lastTouch = Date.now(); try { cv.releasePointerCapture(e.pointerId); } catch {} return; } }
   lastTouch = Date.now();
   Object.assign(ptr, {down:true, sx:p.x, sy:p.y, x:p.x, y:p.y, t0:now, moved:0, mode:null, onPet:hitPet(p), onBall:hitBall(p),
     angle:0, lastAng:null, samples:[{x:p.x, y:p.y, t:now}], rub:0, rubWish:0, scrub:0});
@@ -2590,9 +2596,9 @@ function dropFood(){
   if (!dragFood) return;
   const f = dragFood; dragFood = null; trayKey = '';
   const s = state;
-  if (!s || f.y > H + 10 || f.x < -10 || f.x > W + 10 || f.y < -10){ render(); return; }
+  if (!s || f.y > H + 10 || f.x < -10 || f.x > W + 10 || f.y < -10){ if (f.paid) returnFood(f); render(); return; }
   const id = f.id, F = FOODS[id];
-  if (!FREE.includes(id)){ if (!s.inv[id]) { render(); return; } s.inv[id]--; }
+  if (!FREE.includes(id) && !f.paid){ if (!s.inv[id]) { render(); return; } s.inv[id]--; }
   const m = mouthPos();
   if (Math.hypot(f.x - m.x, f.y - m.y) < R * .8 && awake()) eat(id, true, f.x, f.y);
   else if (F.drink){ burst('drop', 8, f.x, f.y); if (s.inv[id] !== undefined) {} }
@@ -2600,7 +2606,7 @@ function dropFood(){
   save(); render();
 }
 document.addEventListener('pointerup', dropFood);
-document.addEventListener('pointercancel', () => { pendingFood = null; if (!dragFood) return; dragFood = null; trayKey = ''; render(); });
+document.addEventListener('pointercancel', () => { pendingFood = null; if (!dragFood) return; if (dragFood.paid) returnFood(dragFood); dragFood = null; trayKey = ''; render(); });
 
 function eat(id, byHand, fx, fy){
   const s = state, F = FOODS[id], n = s.name;
@@ -3185,7 +3191,8 @@ function physics(dt){
   }
   // cibo per terra
   for (const f of floorFood){ if (f.y < FLOOR - 4){ f.vy += g * dt; f.y = Math.min(FLOOR - 4, f.y + f.vy * dt); } }
-  floorFood = floorFood.filter(f => Date.now() - f.t < 45000);
+  { const old = floorFood.filter(f => Date.now() - f.t > 60000);
+    if (old.length){ old.forEach(returnFood); floorFood = floorFood.filter(f => !old.includes(f)); trayKey = ''; if (old.some(f => !FREE.includes(f.id))) toast(`${old.map(f => FOODS[f.id].e).join('')} rimesso in dispensa`, 1800); saveSoon(); } }
   if (fallingPot){
     fallingPot.vy += g * dt; fallingPot.y += fallingPot.vy * dt; fallingPot.rot += 6 * dt;
     if (fallingPot.y > FLOOR - 14){ fallingPot = null; if (state && state.messes.length < 2){ state.messes.push({type:'pot'}); sfx.sad(); say('Ops… è caduta la piantina!', 2200); setExpr('shy', 2); burst('crumb', 12, W * .83, FLOOR - 10); saveSoon(); } }
@@ -4494,7 +4501,7 @@ setInterval(tick, 1000);
 setTimeout(tick, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); else if (state) save(); });
 window.addEventListener('pagehide', () => { if (state) save(); });
-const APP_VERSION = 19;
+const APP_VERSION = 20;
 /* niente zoom su iPhone: né doppio tocco né pizzico */
 document.addEventListener('gesturestart', e => e.preventDefault(), {passive: false});
 document.addEventListener('dblclick', e => e.preventDefault(), {passive: false});
@@ -4510,7 +4517,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !win
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadCtrl || reloaded) return; reloaded = true; try { save(); } catch {} location.reload(); });
 });
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
-if (location.hash === '#debug') window.__bb = {ev: t => { ev = null; startEvent(t); }, get e(){ return ev; }, pet, ball, hoop: () => HOOP(), get W(){ return W; }, get H(){ return H; }, get s(){ return state; }, get world(){ return world; }, ensureDay, setRoom, tick, raw: () => state && blobById(state.id), render: () => render(true), get guests(){ return guests; }, visits, moveBlob, showHouse, focusBlob, get casaView(){ return casaView; }};
+if (location.hash === '#debug') window.__bb = {ev: t => { ev = null; startEvent(t); }, get e(){ return ev; }, pet, ball, hoop: () => HOOP(), get W(){ return W; }, get H(){ return H; }, get s(){ return state; }, get world(){ return world; }, ensureDay, setRoom, tick, raw: () => state && blobById(state.id), render: () => render(true), get guests(){ return guests; }, visits, moveBlob, showHouse, focusBlob, get casaView(){ return casaView; }, get ff(){ return floorFood; }};
 initRemote();
 })();
 </script>
