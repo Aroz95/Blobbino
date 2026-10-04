@@ -361,7 +361,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 13</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 14</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -563,7 +563,7 @@ function dexInfo(st, k){
   const V = VARS[st][k]; return {n: V.n, e: V.e || '🥚', r: V.r};
 }
 function specOf(st, k){
-  const b = {stage: st, egg:'pois', bv:'pois', cv:null, childForm:null, form:null, av:null, shiny:false};
+  const b = {id:'dex_' + st + k, stage: st, egg:'pois', bv:'pois', cv:null, childForm:null, form:null, av:null, shiny:false, hat:null, face:null, neck:null, back:null};
   if (st === 'egg') b.egg = k; else if (st === 'baby') b.bv = k;
   else if (st === 'child'){ b.cv = k; b.childForm = VARS.child[k].fam; }
   else if (FORMS[k]) b.form = k; else { b.av = k; b.form = VARS.adult[k].base; }
@@ -2194,7 +2194,7 @@ $('transferBtn').addEventListener('click', openTransfer);
 $('importLink').addEventListener('click', openTransfer);
 
 /* ================= il mondo della cameretta ================= */
-const cv = $('scene'), ctx = cv.getContext('2d');
+const cv = $('scene'); let ctx = cv.getContext('2d');
 let W = 0, H = 0, FLOOR = 0, R = 40, RY = 35, tokens = {};
 const PAL = {
   baby:{a:'#ffd3e6', b:'#ff9fca'}, child:{a:'#c2f5e2', b:'#78d9b6'},
@@ -3466,6 +3466,7 @@ function drawBlobMini(c, x, y, r, b, t, o = {}){
     c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.ellipse(-ex*.4, -ey*.5, ex*.17, ey*.08, -.6, 0, 7); c.fill();
     c.restore(); return;
   }
+  if (typeof drawPet === 'function' && !o.simple) return drawPetOn(c, x, y, r, b, t, o);
   const pal = palFor(b), ry = r * .88, V = varOf(b), F = FORMS[kindOf(b)] || {}, dark = !b.shiny && V && 'dark' in V ? V.dark : F.dark, ink = dark ? '#fff6d8' : '#3b2842';
   const feats = featsOf(V), baseLook = !V || (!V.feat && !V.shape) || feats.includes('base'), kind = kindOf(b), shape = shapeOf(b), topU = shapeTop(shape), fdy = ry*(FACE_DY[shape] || 0);
   c.save(); c.translate(x, y);
@@ -3493,6 +3494,19 @@ function drawBlobMini(c, x, y, r, b, t, o = {}){
   for (const k of ['neck', 'face', 'hat']) if (b[k]) drawAcc(c, b[k], r, ry, t, pal);
   c.restore();
 }
+/* disegna un blob esattamente come in casa, su qualunque canvas */
+function drawPetOn(c, x, y, r, b, t, o = {}){
+  const sv = [ctx, W, H, FLOOR], sc = b.stage === 'egg' ? .8 : ({baby:.7, child:.85}[b.stage] || 1);
+  const S = r / (.2 * sc);
+  const spec = Object.assign({hunger:100, thirst:100, fun:100, energy:100, hygiene:100, health:100, trust:100, level:1, sleeping:false, sick:false, walk:null, wish:null}, b);
+  if (o.eyes === 'sleep') spec.sleeping = true;
+  const P = {x, y, vx:0, vy:0, ground:true, rot:0, vr:0, sq:1, sqv:0, wob:0, hop:0, look:null, anim:null, held:false, sink:0,
+    expr: o.eyes === 'happy' ? 'happy' : o.eyes === 'sleep' ? null : 'ok', exprUntil: 1e15};
+  c.save();
+  if (o.flip){ c.translate(x, 0); c.scale(-1, 1); c.translate(-x, 0); }
+  ctx = c; W = S; H = S; FLOOR = y + r * .88 * .78;
+  try { drawPet(o.still ? 0 : t, spec, P, true); } finally { [ctx, W, H, FLOOR] = sv; c.restore(); }
+}
 /* figura grande per album ed evoluzione */
 function drawSpecimen(cv, b, locked){
   if (!cv) return;
@@ -3500,7 +3514,7 @@ function drawSpecimen(cv, b, locked){
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
   const r = Math.min(w, h) * (b.stage === 'egg' ? .34 : .3);
-  const emo = !locked && b.stage === 'adult' ? (b.av ? VARS.adult[b.av].e : FORMS[b.form].e) : null;
+  const emo = null;
   drawBlobMini(c, w / 2, h * .6, r, b, 1.3, {still: true, eyes: locked ? 'open' : 'happy'});
   if (emo){ c.font = `${Math.round(r * .55)}px ${EMO}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(emo, w / 2 + r * .95, h * .6 - r * .85); }
   if (locked){ c.globalCompositeOperation = 'source-in'; c.fillStyle = document.documentElement.dataset.theme === 'dark' || matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light' ? '#4a3d55' : '#e3d3df'; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'source-over';
@@ -4406,7 +4420,7 @@ setInterval(tick, 1000);
 setTimeout(tick, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); else if (state) save(); });
 window.addEventListener('pagehide', () => { if (state) save(); });
-const APP_VERSION = 13;
+const APP_VERSION = 14;
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.claude) window.addEventListener('load', () => {
   const hadCtrl = !!navigator.serviceWorker.controller; let reloaded = false;
   navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'}).then(reg => {
