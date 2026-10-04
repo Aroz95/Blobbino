@@ -74,9 +74,9 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
 .bubble.show{opacity:1;transform:translateX(-50%) scale(1)}
 .away{position:absolute;inset:auto 12px 12px 12px;background:var(--panel);border-radius:16px;padding:10px 14px;font-weight:700;font-size:14px;text-align:center}
 .away small{display:block;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
-.tray{display:flex;gap:6px;overflow-x:auto;background:var(--panel);border:2px solid var(--accent);border-radius:18px;padding:6px;scrollbar-width:none;margin-top:-4px}
+.tray{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain;background:var(--panel);border:2px solid var(--accent);border-radius:18px;padding:6px;scrollbar-width:none;margin-top:-4px}
 .tray::-webkit-scrollbar{display:none}
-.fchip{position:relative;flex:none;width:50px;height:50px;border-radius:14px;border:1px solid var(--line);background:var(--panel-2);font-size:28px;line-height:1;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab;padding:0;color:var(--ink)}
+.fchip{position:relative;flex:none;width:50px;height:50px;border-radius:14px;border:1px solid var(--line);background:var(--panel-2);font-size:28px;line-height:1;display:flex;align-items:center;justify-content:center;touch-action:pan-x;cursor:grab;padding:0;color:var(--ink);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .fchip.wish{border:2px solid var(--gold)}
 .fchip .n{position:absolute;right:-2px;bottom:-4px;background:var(--ink);color:var(--bg);font:800 10px var(--f-body);border-radius:999px;padding:1px 5px}
 .fchip.more{font:800 22px var(--f-body);color:var(--accent)}
@@ -364,7 +364,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 18</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 19</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -2560,15 +2560,28 @@ function doTrick(tr, dir, self){
 }
 
 /* ---------- cibo trascinato ---------- */
+/* vassoio: scorri di lato per vedere i cibi, trascina verso l'alto per darne uno */
+let pendingFood = null;
+$('tray').addEventListener('click', e => { const b = e.target.closest('[data-more]'); if (b){ shopSec = 'food'; setTab('negozio'); } });
 $('tray').addEventListener('pointerdown', e => {
-  const b = e.target.closest('.fchip'); if (!b || !state) return;
-  if (b.hasAttribute('data-more')){ shopSec = 'food'; setTab('negozio'); return; }
-  e.preventDefault();
-  const r = cv.getBoundingClientRect();
-  dragFood = {id: b.dataset.f, x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height};
-  lastTouch = Date.now();
+  const b = e.target.closest('.fchip'); if (!b || !state || b.hasAttribute('data-more')) return;
+  pendingFood = {id: b.dataset.f, x0: e.clientX, y0: e.clientY, t: Date.now(), el: b};
+});
+$('tray').addEventListener('pointerup', () => {
+  if (pendingFood && !dragFood && Date.now() - pendingFood.t < 400) toast('Trascina il cibo verso la bocca del blob', 1600);
+  pendingFood = null;
 });
 document.addEventListener('pointermove', e => {
+  if (pendingFood && !dragFood){
+    const dx = e.clientX - pendingFood.x0, dy = e.clientY - pendingFood.y0;
+    if (dy < -8 && -dy >= Math.abs(dx) * .7){
+      const r = cv.getBoundingClientRect();
+      dragFood = {id: pendingFood.id, x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height};
+      pendingFood = null; lastTouch = Date.now();
+      try { e.target.releasePointerCapture && e.target.releasePointerCapture(e.pointerId); } catch {}
+    } else if (Math.abs(dx) > 12 && Math.abs(dx) > -dy * 1.4) pendingFood = null;   // scorrimento di lato: ci pensa il browser
+    return;
+  }
   if (!dragFood) return;
   const r = cv.getBoundingClientRect();
   dragFood.x = (e.clientX - r.left) * W / r.width; dragFood.y = (e.clientY - r.top) * H / r.height;
@@ -2587,7 +2600,7 @@ function dropFood(){
   save(); render();
 }
 document.addEventListener('pointerup', dropFood);
-document.addEventListener('pointercancel', () => { dragFood = null; trayKey = ''; render(); });
+document.addEventListener('pointercancel', () => { pendingFood = null; if (!dragFood) return; dragFood = null; trayKey = ''; render(); });
 
 function eat(id, byHand, fx, fy){
   const s = state, F = FOODS[id], n = s.name;
@@ -4481,7 +4494,7 @@ setInterval(tick, 1000);
 setTimeout(tick, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); else if (state) save(); });
 window.addEventListener('pagehide', () => { if (state) save(); });
-const APP_VERSION = 18;
+const APP_VERSION = 19;
 /* niente zoom su iPhone: né doppio tocco né pizzico */
 document.addEventListener('gesturestart', e => e.preventDefault(), {passive: false});
 document.addEventListener('dblclick', e => e.preventDefault(), {passive: false});
