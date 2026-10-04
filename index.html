@@ -324,6 +324,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     <div class="foot">
       <span id="saveNote">Salvato su questo dispositivo</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
+      <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
       <span id="resetWrap"><button class="linkbtn" id="resetBtn" type="button">Ricomincia da capo</button></span>
     </div>
@@ -499,6 +500,8 @@ const FURN = {
   tenda:{n:'Tenda indiana', price:100, kind:'floor', draw:true, s:.3, x:.86, wf:.85, special:true, d:'Ci si nasconde dentro: toccala per trovarlo!'},
   trampolino:{n:'Trampolino', price:120, kind:'floor', draw:true, s:.09, x:.62, wf:2.6, special:true, d:'Ci salta sopra da solo. Lancialo lì per rimbalzi altissimi!'},
   piscina:{n:'Piscina di palline', price:150, kind:'floor', draw:true, s:.11, x:.42, wf:2.6, special:true, d:'Ci si tuffa dentro tra le palline colorate.'},
+  palla:{n:'Palla', price:20, kind:'floor', draw:true, s:.09, x:.3, wf:1, special:true, d:'La rincorre, la calcia e (con l\'amicizia) te la riporta.'},
+  canestro:{n:'Canestro', price:60, kind:'wall', draw:true, s:.2, x:.5, y:.4, wf:.9, special:true, d:'Tiri a canestro, schiacciate e lui che prova da solo.'},
   quadro:{n:'Quadro', price:30, kind:'wall', e:'🖼️', s:.12, x:.62, y:.18, d:'Lo guarda e fa il critico d\'arte.'},
   lanterna:{n:'Lanterna', price:45, kind:'wall', e:'🏮', s:.09, x:.9, y:.235, d:'Fa luce calda di notte.'},
   ritratto:{n:'Ritratto', price:50, kind:'wall', draw:true, s:.14, x:.2, y:.55, wf:.8, d:'Un ritratto di chi abita la stanza.'},
@@ -654,7 +657,7 @@ function newBlob(name, parent){
 function newWorld(){
   return {v:4, coins:20, inv:{mela:2, biscotto:1}, hats:[], furn:[], stickers:{}, daily:{last:'', streak:0},
     records:{memory:0, catch:0, hide:0, hoop:0}, wishesDone:0, missions:null, dayMood:null, hoops:0, chests:0, lastEv:null,
-    dex:{}, rooms:[newRoom(0)], blobs:[], valley:[], activeRoom:0, rugs:['rosa']};
+    dex:{}, rooms:[Object.assign(newRoom(0), {furnOn:['canestro','palla']})], blobs:[], valley:[], activeRoom:0, rugs:['rosa'], furn:['canestro','palla'], toys:1, dev:false};
 }
 function migrateBlob(b){
   const now = Date.now();
@@ -688,10 +691,17 @@ function migrateWorld(x){
     x = w;
   }
   const w0 = newWorld();
-  for (const k in w0) if (x[k] === undefined) x[k] = w0[k];
+  for (const k in w0) if (x[k] === undefined && k !== 'toys') x[k] = w0[k];
   if (x.records.hoop === undefined) x.records.hoop = 0;
   for (const r of x.rooms) for (const k in RDEF) if (r[k] === undefined) r[k] = JSON.parse(JSON.stringify(RDEF[k]));
   if (!x.rugs) x.rugs = ['rosa'];
+  if (!x.toys){
+    x.toys = 1;
+    for (const id of ['canestro','palla']){
+      if (!x.furn.includes(id)) x.furn.push(id);
+      if (!x.rooms.some(r => r.furnOn.includes(id))) (x.rooms[x.activeRoom || 0] || x.rooms[0]).furnOn.push(id);
+    }
+  }
   x.blobs.forEach(migrateBlob);
   x.valley = x.valley.filter(id => x.blobs.some(b => b.id === id));
   x.v = 4;
@@ -848,13 +858,13 @@ function fromValley(id){
 function buyRoom(){
   const n = world.rooms.length; if (n >= 4) return;
   const p = ROOM_PRICES[n];
-  if (world.coins < p){ toast(`Ti mancano ${p - world.coins} stelline.`); return; }
-  world.coins -= p; world.rooms.push(newRoom(n)); sfx.coin(); save(); render(true); openHouse(); toast(`Nuova stanza: ${world.rooms[n].name}!`);
+  if (!rich() && world.coins < p){ toast(`Ti mancano ${p - world.coins} stelline.`); return; }
+  if (!rich()) world.coins -= p; world.rooms.push(newRoom(n)); sfx.coin(); save(); render(true); openHouse(); toast(`Nuova stanza: ${world.rooms[n].name}!`);
 }
 function setTheme(i, th){
   const r = world.rooms[i]; if (r.theme === th) return;
-  if (world.coins < 10){ toast('Cambiare carta da parati costa 10 stelline.'); return; }
-  world.coins -= 10; r.theme = th; sfx.coin(); save(); render(true); openHouse();
+  if (!rich() && world.coins < 10){ toast('Cambiare carta da parati costa 10 stelline.'); return; }
+  if (!rich()) world.coins -= 10; r.theme = th; sfx.coin(); save(); render(true); openHouse();
 }
 function openHouse(){
   const rows = world.rooms.map((r, i) => {
@@ -863,7 +873,7 @@ function openHouse(){
       <span style="display:flex;gap:6px">${b ? `<button class="btn small ghost" data-valley="${i}" type="button">Valle</button>` : ''}<button class="btn small" data-go="${i}" type="button">Vai</button></span></div>`;
   }).join('');
   const n = world.rooms.length;
-  const buy = n < 4 ? `<div class="rowi"><div class="em">➕</div><div><b>Nuova stanza</b><small>Per far crescere più blob insieme</small></div><button class="btn small${world.coins < ROOM_PRICES[n] ? ' poor' : ''}" data-buyroom type="button">${ROOM_PRICES[n] ? STAR + ROOM_PRICES[n] : 'Gratis'}</button></div>` : '';
+  const buy = n < 4 ? `<div class="rowi"><div class="em">➕</div><div><b>Nuova stanza</b><small>Per far crescere più blob insieme</small></div><button class="btn small${!rich() && world.coins < ROOM_PRICES[n] ? ' poor' : ''}" data-buyroom type="button">${ROOM_PRICES[n] ? STAR + ROOM_PRICES[n] : 'Gratis'}</button></div>` : '';
   const cur = world.rooms[activeRoom];
   const sw = Object.keys(THEMES).map(k => `<button class="sw" data-th="${k}" type="button" aria-pressed="${cur.theme === k}" aria-label="${THEMES[k].n}" style="background:hsl(${THEMES[k].h},80%,82%)"></button>`).join('');
   const vb = world.valley.map(id => blobById(id)).filter(Boolean);
@@ -994,8 +1004,10 @@ function toast(msg, ms = 2400){
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
 }
+const rich = () => !!(world && world.dev);
 function addCoins(n){
   if (!world) return;
+  if (n < 0 && rich()) return;
   world.coins += n;
   const c = $('coins'); c.classList.add('pop'); setTimeout(() => c.classList.remove('pop'), 220);
 }
@@ -1059,14 +1071,14 @@ function makeWish(s){
   const now = Date.now(), opts = [];
   const dm = DM();
   const add = (w, n = 1) => { const k = Math.max(1, Math.round(n * ((dm && dm.wish[w.type]) || 1))); for (let i = 0; i < k; i++) opts.push(w); };
-  add({type:'hoop', e:'🏀', text:'vuole vederti fare canestro', reward:rnd(6,9)}, 2);
-  if (s.energy > 30) add({type:'dunk', e:'💥', text:'vuole fare una schiacciata nel canestro', reward:rnd(7,10)});
+  if (hasFurn('canestro') && hasFurn('palla')) add({type:'hoop', e:'🏀', text:'vuole vederti fare canestro', reward:rnd(6,9)}, 2);
+  if (s.energy > 30 && hasFurn('canestro')) add({type:'dunk', e:'💥', text:'vuole fare una schiacciata nel canestro', reward:rnd(7,10)});
   add({type:'tickle', e:'🤭', text:'vuole il solletico', reward:rnd(4,7)});
   const food = Math.random() < .35 ? s.traits.favFood : pick(TASTY.filter(k => k !== s.traits.hateFood));
   const F = FOODS[food];
   add({type:'food', target:food, e:F.e, text:`vorrebbe ${F.n.toLowerCase()}`, reward:F.price + rnd(4,8)}, 2);
   add({type:'cuddle', e:'🤗', text:'ha voglia di coccole', reward:rnd(4,7)}, 2);
-  add({type:'ball', e:'⚽', text:'vuole giocare a palla', reward:rnd(5,8)}, 2);
+  if (hasFurn('palla')) add({type:'ball', e:'⚽', text:'vuole giocare a palla', reward:rnd(5,8)}, 2);
   if (s.energy > 30) add({type:'throw', e:'🚀', text:'vuole volare in alto', reward:rnd(5,8)}, 2);
   const g = Math.random() < .35 ? s.traits.favGame : pick(Object.keys(GAMES));
   add({type:'game', target:g, e:GAMES[g].e, text:`vuole giocare a ${GAMES[g].n}`, reward:rnd(8,12)});
@@ -1290,7 +1302,7 @@ function render(full){
   renderRooms();
   $('petName').textContent = s ? (s.name || (s.stage === 'egg' ? 'Un uovo nuovo' : 'Senza nome')) : world ? world.rooms[activeRoom].name : 'Un uovo misterioso';
   $('stageChip').textContent = emptyRoom ? 'Stanza libera' : stageName(s);
-  $('coinVal').textContent = world ? world.coins : 0;
+  $('coinVal').textContent = rich() ? '∞' : world ? world.coins : 0;
   if (emptyRoom) $('ageText').textContent = 'Nessuno abita qui';
   else if (!s) $('ageText').textContent = 'In attesa di un nome';
   else if (s.stage === 'egg') $('ageText').textContent = `Si schiude tra ${fmtDur(s.hatchAt - now)}`;
@@ -1438,14 +1450,14 @@ function renderShop(){
   const s = state, list = $('shopList'), room = curRoom();
   document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-selected', b.dataset.s === shopSec ? 'true' : 'false'));
   const coins = world ? world.coins : 0;
-  const buyBtn = (kind, id) => { const p = priceOf(kind, id); return `<button class="btn small${coins < p ? ' poor' : ''}" data-buy type="button">${p ? STAR + p : 'Prendi'}</button>`; };
+  const buyBtn = (kind, id) => { const p = priceOf(kind, id); return `<button class="btn small${!rich() && coins < p ? ' poor' : ''}" data-buy type="button">${p ? STAR + p : 'Prendi'}</button>`; };
   // offerta del giorno
   const off = dailyOffer(), ob = $('offer');
   ob.hidden = !off || shopSec === 'food';
   if (off && !ob.hidden){
     const X = (off.kind === 'acc' ? ACC : FURN)[off.id];
     ob.innerHTML = `<canvas data-${off.kind}="${off.id}" aria-hidden="true"></canvas><div><span class="label">Offerta del giorno</span><div><b>${X.n}</b></div><small><s>${X.price}</s> → ${off.price} stelline</small></div>
-      <span class="item" data-id="${off.id}" data-k="${off.kind}" style="all:unset">${coins < off.price ? `<button class="btn small poor" data-buy type="button">${STAR}${off.price}</button>` : `<button class="btn small" data-buy type="button">${STAR}${off.price}</button>`}</span>`;
+      <span class="item" data-id="${off.id}" data-k="${off.kind}" style="all:unset">${!rich() && coins < off.price ? `<button class="btn small poor" data-buy type="button">${STAR}${off.price}</button>` : `<button class="btn small" data-buy type="button">${STAR}${off.price}</button>`}</span>`;
   }
   // anteprima del look
   const lk = $('look'); lk.hidden = shopSec !== 'acc' || !s || s.stage === 'egg';
@@ -1519,7 +1531,7 @@ function shopAction(kind, id, act){
   if (!world){ toast('Prima dai un nome al tuo uovo.'); return; }
   if (act === 'buy'){
     const p = priceOf(kind, id);
-    if (world.coins < p){ toast(`Ti mancano ${p - world.coins} stelline. Giochi, eventi, missioni e passeggiate ne fanno guadagnare.`); return; }
+    if (!rich() && world.coins < p){ toast(`Ti mancano ${p - world.coins} stelline. Giochi, eventi, missioni e passeggiate ne fanno guadagnare.`); return; }
     addCoins(-p); sfx.coin();
     if (kind === 'food'){ world.inv[id] = (world.inv[id] || 0) + 1; toast(`${FOODS[id].e} ${FOODS[id].n} in dispensa`); }
     else if (kind === 'acc'){ world.hats.push(id); if (s && s.stage !== 'egg'){ s[slotKey(id)] = id; fulfill('hat', id); toast(`${nm(s)} indossa: ${ACC[id].n.toLowerCase()}!`); } else toast(`${ACC[id].n} nell'armadio`); }
@@ -1699,6 +1711,67 @@ $('soundBtn').addEventListener('click', () => {
 });
 $('soundBtn').textContent = `Suoni: ${sound ? 'sì' : 'no'}`;
 
+/* ================= codice segreto e strumenti di test ================= */
+const DEV_HASH = '6a178f8b545406fca4557701ef1454adc6edd3dca62b722e1f7f693e8ed631b7';
+async function sha256hex(txt){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function openCode(){
+  if (rich()){
+    openSheet('Modalità test', `<p class="shopnote" style="margin-bottom:10px">Stelline infinite attive: compri tutto gratis. Questi strumenti servono solo a te per provare il gioco.</p>
+      <div class="rows">
+        <div class="rowi"><div class="em">⏩</div><div><b>Fallo crescere subito</b><small>Uovo → cucciolo → piccolo → adulto</small></div><button class="btn small" data-dev="grow" type="button">Vai</button></div>
+        <div class="rowi"><div class="em">🥚</div><div><b>Fagli deporre un uovo</b><small>Solo se è adulto</small></div><button class="btn small" data-dev="egg" type="button">Vai</button></div>
+        <div class="rowi"><div class="em">🎉</div><div><b>Sorpresa adesso</b><small>Fa partire subito un evento</small></div><button class="btn small" data-dev="event" type="button">Vai</button></div>
+        <div class="rowi"><div class="em">📅</div><div><b>Nuovo giorno</b><small>Regalo, umore e missioni nuove</small></div><button class="btn small" data-dev="day" type="button">Vai</button></div>
+        <div class="rowi"><div class="em">💭</div><div><b>Desiderio adesso</b><small>Gli fa venire subito un desiderio</small></div><button class="btn small" data-dev="wish" type="button">Vai</button></div>
+      </div>
+      <div class="sheet-actions"><button class="btn ghost" data-dev="off" type="button">Esci dalla modalità test</button></div>`, b => b.addEventListener('click', e => {
+      const t = e.target.closest('[data-dev]'); if (!t) return;
+      const k = t.dataset.dev, raw = state && blobById(state.id), now = Date.now();
+      if (k === 'off'){ world.dev = false; save(); closeSheet(); render(true); toast('Modalità test disattivata'); return; }
+      if (k === 'day'){ world.daily.last = ''; world.missions = null; world.dayMood = null; closeSheet(); tick(); return; }
+      if (!raw){ toast('Vai in una stanza con un blob.'); return; }
+      if (k === 'grow'){
+        if (raw.stage === 'egg') raw.hatchAt = now - 1000;
+        else if (raw.stage === 'baby') raw.hatchedAt = now - 2*HOUR - 1000;
+        else if (raw.stage === 'child') raw.hatchedAt = now - 12*HOUR - 1000;
+        else { toast('È già adulto.'); return; }
+        closeSheet(); tick();
+      } else if (k === 'egg'){
+        if (raw.stage !== 'adult'){ toast('Prima fallo diventare adulto.'); return; }
+        closeSheet(); layEgg(raw); tick();
+      } else if (k === 'event'){
+        if (!awake()){ toast('Deve essere sveglio e in casa.'); return; }
+        closeSheet(); ev = null; startEvent();
+      } else if (k === 'wish'){
+        if (raw.stage === 'egg' || raw.sleeping || raw.walk){ toast('Deve essere sveglio e in casa.'); return; }
+        raw.wish = null; raw.nextWishAt = 0; closeSheet(); tick();
+      }
+    }));
+    return;
+  }
+  openSheet('Codice segreto', `<p class="shopnote" style="margin-bottom:10px">Se hai un codice, scrivilo qui.</p>
+    <input id="devCode" class="code" style="min-height:0;height:46px;font-size:16px" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Codice">
+    <p class="err" id="devErr"></p>
+    <div class="sheet-actions"><button class="btn" id="devGo" type="button">Attiva</button></div>`, b => {
+    const go = async () => {
+      const v = $('devCode').value.trim().toUpperCase().replace(/\s+/g, '');
+      if (!v){ $('devErr').textContent = 'Scrivi prima il codice.'; return; }
+      if (!window.crypto || !crypto.subtle){ $('devErr').textContent = 'Qui il codice non si può verificare. Prova dall\'app installata.'; return; }
+      const hx = await sha256hex(v);
+      if (hx !== DEV_HASH){ $('devErr').textContent = 'Codice non valido.'; return; }
+      if (!world){ $('devErr').textContent = 'Prima dai un nome al tuo uovo.'; return; }
+      world.dev = true; save(); render(true); sfx.level(); openCode(); toast('Modalità test attiva: stelline infinite!');
+    };
+    $('devGo').onclick = go;
+    $('devCode').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    $('devCode').addEventListener('input', () => { $('devErr').textContent = ''; });
+  });
+}
+$('codeBtn').addEventListener('click', openCode);
+
 /* ================= trasferimento ================= */
 function encodeSave(){
   const json = JSON.stringify({v:4, world});
@@ -1824,11 +1897,11 @@ const ptr = {down:false};
 let tapCount = 0, tapT = 0;
 function toCanvas(e){ const r = cv.getBoundingClientRect(); return {x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height}; }
 const hitPet = p => petVisible() || (state && state.stage === 'egg') ? Math.hypot(p.x - pet.x, (p.y - pet.y) * 1.1) < R * 1.1 : false;
-const hitBall = p => Math.hypot(p.x - ball.x, p.y - ball.y) < ball.r * 2;
+const hitBall = p => hasFurn('palla') && Math.hypot(p.x - ball.x, p.y - ball.y) < ball.r * 2;
 let editMode = false, dragF = null;
 function furnHit(p){
   const r = curRoom(); if (!r) return null;
-  for (let i = r.furnOn.length - 1; i >= 0; i--){ const id = r.furnOn[i]; if (!FURN[id]) continue; const q = fposPx(id);
+  for (let i = r.furnOn.length - 1; i >= 0; i--){ const id = r.furnOn[i]; if (!FURN[id]) continue; const q = furnBox(id);
     if (Math.abs(p.x - q.x) < q.w/2 + 8 && Math.abs(p.y - q.y) < q.S/2 + 8) return id; }
   return null;
 }
@@ -1836,7 +1909,7 @@ cv.addEventListener('pointerdown', e => {
   if (editMode && world && fit()){
     e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch {}
     const p = toCanvas(e), id = furnHit(p);
-    if (id){ const q = fposPx(id); dragF = {id, ox: q.x - p.x, oy: q.y - p.y, moved: 0, lx: p.x, ly: p.y}; }
+    if (id){ const q = id === 'canestro' ? HOOP() : furnBox(id); dragF = {id, ox: q.x - p.x, oy: q.y - p.y, moved: 0, lx: p.x, ly: p.y}; if (id === 'palla') ball.held = true; }
     return;
   }
   if (!state || !fit()) return;
@@ -1861,7 +1934,9 @@ cv.addEventListener('pointermove', e => {
     if (!dragF) return;
     const p = toCanvas(e), F = FURN[dragF.id], r = curRoom();
     dragF.moved += Math.hypot(p.x - dragF.lx, p.y - dragF.ly); dragF.lx = p.x; dragF.ly = p.y;
+    if (dragF.id === 'palla'){ ball.x = lim(p.x + dragF.ox, ball.r, W - ball.r); ball.y = lim(p.y + dragF.oy, ball.r, FLOOR - ball.r); ball.vx = ball.vy = 0; return; }
     const nx = lim((p.x + dragF.ox) / W, .04, .96);
+    if (dragF.id === 'canestro'){ r.fpos.canestro = {x: lim(nx, .15, .85), y: lim((p.y + dragF.oy) / H, .2, .6)}; return; }
     r.fpos[dragF.id] = F.kind === 'wall' ? {x: nx, y: lim((p.y + dragF.oy) / H, .06, .66)} : {x: nx, y: F.y};
     return;
   }
@@ -1892,7 +1967,7 @@ cv.addEventListener('pointermove', e => {
 function endPointer(e){
   if (editMode){
     if (dragF){
-      const id = dragF.id, tapd = dragF.moved < 8; dragF = null; save();
+      const id = dragF.id, tapd = dragF.moved < 8; dragF = null; if (id === 'palla'){ ball.held = false; ball.ground = false; } save();
       if (tapd) openSheet(FURN[id].n, `<p class="shopnote">${FURN[id].d}</p><div class="sheet-actions"><button class="btn ghost" id="fRemove" type="button">Togli dalla stanza</button><button class="btn" data-close type="button">Lascialo qui</button></div>`,
         b => { b.querySelector('#fRemove').onclick = () => { const r = curRoom(); r.furnOn = r.furnOn.filter(x => x !== id); save(); closeSheet(); toast(`${FURN[id].n} messo in soffitta`); }; });
     }
@@ -2357,14 +2432,14 @@ function choose(){
     if (T === 'letter') return {type:'come', tx: lim(ev.x + R * 1.3, R, W - R), until: now + 3000};
   }
   if (s.distrust) add({type:'sulk', tx: W * .85}, 4);
-  const ballMoving = Math.hypot(ball.vx, ball.vy) > 60;
+  const hasBall = hasFurn('palla'), ballMoving = hasBall && Math.hypot(ball.vx, ball.vy) > 60;
   if (ballMoving && !ball.held) add({type:'ball'}, 8);
-  if (perk('fetch') && !ballMoving && !ball.held && Math.abs(ball.x - W * .5) > W * .22) add({type:'fetch'}, 3);
+  if (hasBall && perk('fetch') && !ballMoving && !ball.held && Math.abs(ball.x - W * .5) > W * .22) add({type:'fetch'}, 3);
   add({type:'wander', tx: rf(R, W - R)}, 3);
   add({type:'look'}, 2);
   add({type:'idle'}, 1.5);
   add({type:'window'}, 1);
-  add({type:'ball'}, 1.2);
+  if (hasBall) add({type:'ball'}, 1.2);
   if (s.energy < 30) add({type:'yawn'}, 3);
   if (s.poops > 0) add({type:'stinky'}, 2);
   if (now - lastTouch > 30000 && s.trust > 45) add({type:'attention'}, 3);
@@ -2381,7 +2456,7 @@ function choose(){
   if (s.furnOn.includes('pianta')) add({type:'sniff'}, 1);
   if (s.furnOn.includes('quadro')) add({type:'art'}, .8);
   add({type:'hiccup'}, .5);
-  add({type:'shoot'}, (!ball.held && Math.hypot(ball.vx, ball.vy) < 30 ? 1.4 : 0) * (isForm('pallino') ? 5 : 1));
+  if (hasBall && hasFurn('canestro')) add({type:'shoot'}, (!ball.held && Math.hypot(ball.vx, ball.vy) < 30 ? 1.4 : 0) * (isForm('pallino') ? 5 : 1));
   if (isForm('saltimbanco')) add({type:'show'}, 3);
   add({type:'sing'}, .9);
   add({type:'tail'}, .6);
@@ -2584,10 +2659,10 @@ function physics(dt){
     else if (pet.x < R){ pet.x = R; pet.vx = Math.abs(pet.vx) * .55; squish(.2); sfx.boing(); if (thrown && Math.abs(pet.vx) > 60) mission('bounceWall'); }
     else if (pet.x > W - R){ pet.x = W - R; pet.vx = -Math.abs(pet.vx) * .55; squish(.2); sfx.boing(); if (thrown && Math.abs(pet.vx) > 60) mission('bounceWall'); }
     if (pet.y < RY){ pet.y = RY; pet.vy = Math.abs(pet.vy) * .4; squish(.25); sfx.boing(); if (thrown) mission('ceiling'); }
-    { const h = HOOP(); if (thrown && ppy < h.y && pet.y >= h.y && pet.vy > 0 && Math.abs(pet.x - h.x) < h.w / 2 + R * .3) dunk(); }
+    if (hasFurn('canestro')){ const h = HOOP(); if (thrown && ppy < h.y && pet.y >= h.y && pet.vy > 0 && Math.abs(pet.x - h.x) < h.w / 2 + R * .3) dunk(); }
     // urto con la palla in volo
     const db = Math.hypot(ball.x - pet.x, ball.y - pet.y);
-    if (db < R + ball.r && !ball.held){ ball.by = 'you'; const nx = (ball.x - pet.x) / db, ny = (ball.y - pet.y) / db; ball.vx = nx * 600 + pet.vx * .5; ball.vy = ny * 600; ball.ground = false; ball.x = pet.x + nx * (R + ball.r + 1); ball.y = pet.y + ny * (R + ball.r + 1); sfx.pop(); }
+    if (db < R + ball.r && !ball.held && hasFurn('palla')){ ball.by = 'you'; const nx = (ball.x - pet.x) / db, ny = (ball.y - pet.y) / db; ball.vx = nx * 600 + pet.vx * .5; ball.vy = ny * 600; ball.ground = false; ball.x = pet.x + nx * (R + ball.r + 1); ball.y = pet.y + ny * (R + ball.r + 1); sfx.pop(); }
     if (pet.y >= groundY()){
       pet.y = groundY();
       const impact = pet.vy;
@@ -2617,18 +2692,18 @@ function physics(dt){
     if (!(pet.beh && pet.beh.type === 'enter')) pet.x = lim(pet.x, R, W - R);
   }
   // palla
-  if (!ball.held){
+  if (!ball.held && hasFurn('palla')){
     const br = ball.r;
     if (!ball.ground){
       const bpy = ball.y, h = HOOP();
       ball.vy += g * dt; ball.x += ball.vx * dt; ball.y += ball.vy * dt;
-      for (const ex of [h.x - h.w / 2, h.x + h.w / 2]){
+      if (hasFurn('canestro')) for (const ex of [h.x - h.w / 2, h.x + h.w / 2]){
         const dx = ball.x - ex, dy = ball.y - h.y, d = Math.hypot(dx, dy) || 1;
         if (d < br + 3){ const nx = dx / d, ny = dy / d, vn = ball.vx * nx + ball.vy * ny;
           if (vn < 0){ ball.vx -= 1.7 * vn * nx; ball.vy -= 1.7 * vn * ny; tone(700, .05, 'square', .04); }
           ball.x = ex + nx * (br + 3); ball.y = h.y + ny * (br + 3); }
       }
-      if (bpy < h.y && ball.y >= h.y && ball.vy > 0 && Math.abs(ball.x - h.x) < h.w / 2 - br * .4) scoreHoop(ball.by || 'you');
+      if (hasFurn('canestro') && bpy < h.y && ball.y >= h.y && ball.vy > 0 && Math.abs(ball.x - h.x) < h.w / 2 - br * .4) scoreHoop(ball.by || 'you');
       if (ball.x < br){ ball.x = br; ball.vx = Math.abs(ball.vx) * .7; }
       if (ball.x > W - br){ ball.x = W - br; ball.vx = -Math.abs(ball.vx) * .7; }
       if (ball.y < br){ ball.y = br; ball.vy = Math.abs(ball.vy) * .6; }
@@ -2820,6 +2895,17 @@ function drawFurnShape(c, id, cx, cy, S, t, live){
         c.beginPath(); c.moveTo(fxp - dir*S*.08, fy); c.lineTo(fxp - dir*S*.17, fy - S*.06); c.lineTo(fxp - dir*S*.17, fy + S*.06); c.closePath(); c.fill(); }
       c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 1; for (let i = 0; i < 3; i++){ const by = cy + S*.3 - ((t*20 + i*15) % (S*.75)); c.beginPath(); c.arc(cx + w*.3, by, 2, 0, 7); c.stroke(); }
       break; }
+    case 'canestro': {
+      c.fillStyle = '#ffffff'; c.strokeStyle = 'rgba(180,150,170,.8)'; c.lineWidth = 2; rrC(c, cx - w*.55, cy - S*.5, w*1.1, S*.45, 6); c.fill(); c.stroke();
+      c.strokeStyle = '#ff8fbf'; c.lineWidth = 2.5; rrC(c, cx - w*.22, cy - S*.36, w*.44, S*.24, 3); c.stroke();
+      c.strokeStyle = 'rgba(160,120,150,.7)'; c.lineWidth = 1.5; for (let i = 0; i <= 4; i++){ const f = i / 4; c.beginPath(); c.moveTo(cx - w*.38 + f*w*.76, cy); c.lineTo(cx - w*.22 + f*w*.44, cy + S*.42); c.stroke(); }
+      c.strokeStyle = '#ff6f6f'; c.lineWidth = 4; c.lineCap = 'round'; c.beginPath(); c.moveTo(cx - w*.4, cy); c.lineTo(cx + w*.4, cy); c.stroke();
+      break; }
+    case 'palla': {
+      const r = S * .45; c.fillStyle = '#7cc8ff'; c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fill();
+      c.fillStyle = '#fff'; c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, r, -.4, .8); c.closePath(); c.fill();
+      c.fillStyle = '#ffc94f'; c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, r, 2.2, 3.2); c.closePath(); c.fill();
+      break; }
     case 'ritratto': {
       c.fillStyle = '#e0b44a'; rrC(c, cx - w*.5, cy - S*.5, w, S, 4); c.fill();
       c.fillStyle = '#fff7e6'; rrC(c, cx - w*.4, cy - S*.4, w*.8, S*.8, 3); c.fill();
@@ -2845,9 +2931,14 @@ function fposPx(id){
   return F.kind === 'wall' ? {x: fp.x * W, y: fp.y * H, S, w: S * (F.wf || 1)} : {x: fp.x * W, y: FLOOR - S * .46, S, w: S * (F.wf || 1)};
 }
 const hasFurn = id => { const r = curRoom(); return !!r && r.furnOn.includes(id); };
+function furnBox(id){
+  if (id === 'palla') return {x: ball.x, y: ball.y, S: ball.r * 2.2, w: ball.r * 2.2};
+  if (id === 'canestro'){ const h = HOOP(); return {x: h.x, y: h.y - H * .02, S: H * .2, w: h.w * 1.45}; }
+  return fposPx(id);
+}
 
 /* ---------- canestro ---------- */
-const HOOP = () => ({x: W * .5, y: H * .4, w: Math.max(W * .15, ball.r * 3.8)});
+const HOOP = () => { const r = curRoom(), fp = (r && r.fpos && r.fpos.canestro) || {x:.5, y:.4}; return {x: fp.x * W, y: fp.y * H, w: Math.max(W * .15, ball.r * 3.8)}; };
 let hoopFx = 0, hoopStreak = 0, lastHoopAt = 0, hoopCoins = 6, lastHoopRefill = Date.now(), lastDunk = 0;
 function scoreHoop(by){
   const s = state, h = HOOP(), now = Date.now();
@@ -2944,7 +3035,7 @@ function drawRoom(t, night){
     ctx.beginPath(); ctx.moveTo(cx - R*.4, cy); for (let i = 0; i < 7; i++) ctx.lineTo(cx + (r2() - .5) * R * .9, cy + (r2() - .5) * R * .6); ctx.stroke();
     ctx.beginPath(); ctx.arc(cx + R*.15, cy - R*.1, R*.15, 0, 7); ctx.stroke();
   }
-  drawHoopBack();
+  if (hasFurn('canestro')) drawHoopBack();
   // mensola
   const sx = W*.72, sy = H*.3;
   ctx.fillStyle = tokens.panel; roundRect(sx, sy, W*.2, 7, 3); ctx.fill();
@@ -2956,7 +3047,7 @@ function drawRoom(t, night){
   ctx.fillStyle = RC.floor; ctx.fillRect(0, FLOOR - H*.08, W, H);
   drawRug(ctx, W*.55, FLOOR + H*.02, W*.32, H*.06, (curRoom() && curRoom().rug) || 'rosa', RC.rug, t);
   const room = curRoom();
-  if (room) for (const id of room.furnOn){ if (!FURN[id]) continue; const p = fposPx(id); drawFurnShape(ctx, id, p.x, p.y, p.S, t, true);
+  if (room) for (const id of room.furnOn){ if (!FURN[id]) continue; const p = furnBox(id); if (id !== 'canestro' && id !== 'palla') drawFurnShape(ctx, id, p.x, p.y, p.S, t, true);
     if (editMode){ ctx.save(); ctx.strokeStyle = '#ff6fae'; ctx.setLineDash([5, 4]); ctx.lineWidth = 2; roundRect(p.x - p.w/2 - 4, p.y - p.S/2 - 4, p.w + 8, p.S + 8, 8); ctx.stroke(); ctx.restore(); } }
   if (hasFurn('lanterna') && night){ const lp = fposPx('lanterna'); const gl = ctx.createRadialGradient(lp.x, lp.y, 2, lp.x, lp.y, W*.25); gl.addColorStop(0, 'rgba(255,190,90,.35)'); gl.addColorStop(1, 'rgba(255,190,90,0)'); ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H); }
   // vaso caduto
@@ -3234,7 +3325,7 @@ function frame(now){
     for (const f of floorFood) emoji(FOODS[f.id].e, f.x, f.y - R*.15, R*.4);
     if (flower){ flower.t += dt; const sc = Math.min(1, flower.t); emoji('🌼', flower.x, FLOOR - R*.25*sc, R*.5*sc + 1); }
     if (ev && ev.type === 'visitor') drawEvent(t);
-    if (ball.y < pet.y) drawBall();
+    if (hasFurn('palla') && ball.y < pet.y) drawBall();
     drawPet(t);
     if (s && petVisible()){
       const bh = pet.beh;
@@ -3244,8 +3335,8 @@ function frame(now){
       if (s.sleeping && hasFurn('letto')){ const p = fposPx('letto'); if (Math.abs(pet.x - (p.x + p.w*.12)) < 8){ ctx.fillStyle = '#a893ff'; roundRect(pet.x - R*1.05, pet.y + RY*.05 + (pet.sink || 0), R*2.1, RY*.85, R*.25); ctx.fill();
         ctx.fillStyle = 'rgba(255,255,255,.6)'; for (let i = 0; i < 5; i++){ ctx.beginPath(); ctx.arc(pet.x - R*.7 + i*R*.35, pet.y + RY*.35 + (i % 2)*RY*.2 + (pet.sink || 0), R*.06, 0, 7); ctx.fill(); } } }
     }
-    if (ball.y >= pet.y) drawBall();
-    drawHoopFront(t);
+    if (hasFurn('palla') && ball.y >= pet.y) drawBall();
+    if (hasFurn('canestro')) drawHoopFront(t);
     if (ev && ev.type !== 'glint' && ev.type !== 'visitor') drawEvent(t);
     drawParticles(dt);
     if (s && s.sleeping && !s.walk){ ctx.fillStyle = 'rgba(30,15,60,.32)'; ctx.fillRect(0, 0, W, H); }
