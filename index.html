@@ -250,6 +250,19 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
 .bodies figure{margin:0;text-align:center;background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:4px}
 .bodies canvas{display:block;width:100%;aspect-ratio:1/1}
 .bodies figcaption{font-size:12px;font-weight:800}
+.needs{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:6px 2px 5px;cursor:pointer;margin-bottom:-4px}
+.nd{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.nd .ring{width:40px;height:40px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p) * 1%), var(--line) 0);display:grid;place-items:center;transition:background .3s}
+.nd .ic{width:31px;height:31px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-size:17px;line-height:1}
+.nd small{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap}
+.nd.low small{color:#e5484d}
+.nd.low .ring{animation:needPulse 1.1s ease-in-out infinite}
+@keyframes needPulse{50%{transform:scale(1.1)}}
+@media (prefers-reduced-motion: reduce){.nd.low .ring{animation:none}}
+.minibars{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:5px}
+.minibars span{display:flex;align-items:center;gap:3px;font-size:12px;line-height:1}
+.minibars i{display:block;width:24px;height:6px;border-radius:3px;background:var(--line);overflow:hidden;position:relative}
+.minibars i b{position:absolute;inset:0 auto 0 0;border-radius:3px}
 .big-em{font-size:56px;text-align:center;line-height:1.1}
 .sheet-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 
@@ -309,6 +322,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
       <div class="present" id="presentChips"></div>
       <button class="btn small ghost" id="editBtn" type="button">🛋️ Arreda</button>
     </div>
+    <div class="needs" id="needsBar" role="button" tabindex="0" aria-label="Bisogni del blob: tocca per i dettagli" hidden></div>
     <div class="habitat" id="habitat">
       <canvas id="scene" aria-label="La cameretta. Tocca, strofina e trascina per giocare con il tuo blob."></canvas>
       <div class="away" id="away" hidden></div>
@@ -368,7 +382,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 21</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 22</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -455,6 +469,7 @@ const STAR = '<svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M1
 /* ================= contenuti ================= */
 const STATS = [['hunger','Pancia'],['thirst','Acqua'],['fun','Gioia'],['energy','Energia'],['hygiene','Pulizia'],['health','Salute']];
 const statColor = {hunger:'#ff9ec7',thirst:'#7cc8ff',fun:'#ffc94f',energy:'#a893ff',hygiene:'#6fdcb6',health:'#ff7eb0'};
+const statIcon = {hunger:'🍎', thirst:'💧', fun:'😊', energy:'⚡', hygiene:'🧼', health:'❤️'};
 const FORMS = {
   baby:{n:'Cucciolo', e:'🐣', pal:{a:'#ffd3e6', b:'#ff9fca'}},
   morbidello:{n:'Morbidello', e:'🧸', child:true, pal:{a:'#fde2ff', b:'#e4a6f0'}, ab:'Un piccolo coccolone: diventerà tenero, goloso, curato, ridanciano o nottambulo.', hint:'Da piccolo: tante cure'},
@@ -1134,10 +1149,10 @@ function blobStatus(b){
 let blobListKey = '';
 function renderBlobList(){
   const hb = houseBlobs();
-  const key = hb.map(b => b.id + b.at + blobStatus(b) + (b.name || '') + b.stage + (b.walk ? 1 : 0) + (b.visit ? 1 : 0)).join(',');
+  const key = hb.map(b => b.id + b.at + blobStatus(b) + (b.name || '') + b.stage + (b.walk ? 1 : 0) + (b.visit ? 1 : 0) + STATS.map(([k]) => Math.round(b[k] / 10)).join('')).join(',');
   if (key === blobListKey) return; blobListKey = key;
   $('blobList').innerHTML = hb.map(b => { const bf = b.stage !== 'egg' ? bestFriend(b) : null;
-    return `<div class="rowi"><div class="em">${blobEmoji(b)}</div><div><b>${esc(b.name || 'Senza nome')}</b><small class="where">${blobPlace(b)}${bf ? ` · amico di ${esc(nm(bf))}` : ''}</small><span class="st">${blobStatus(b)}</span></div>
+    return `<div class="rowi"><div class="em">${blobEmoji(b)}</div><div><b>${esc(b.name || 'Senza nome')}</b><small class="where">${blobPlace(b)}${bf ? ` · amico di ${esc(nm(bf))}` : ''}</small><span class="st">${blobStatus(b)}</span>${b.stage !== 'egg' ? `<span class="minibars">${STATS.map(([k, l]) => `<span title="${l} ${Math.round(b[k])}%">${statIcon[k]}<i><b style="width:${Math.round(b[k])}%;background:${b[k] < 25 ? '#e5484d' : statColor[k]}"></b></i></span>`).join('')}</span>` : ''}</div>
     <button class="btn small" data-goblob="${b.id}" type="button">${b.walk ? 'Vedi' : 'Vai'}</button></div>`; }).join('')
     + (world.valley.length ? `<p class="shopnote" style="margin-top:4px">${world.valley.length} ${world.valley.length === 1 ? 'blob riposa' : 'blob riposano'} nella Valle.</p>` : '');
 }
@@ -1218,6 +1233,7 @@ function renderRoomHead(){
     : `<span class="shopnote" style="align-self:center;white-space:nowrap">${esc(world.rooms[activeRoom].name)}</span>`;
 }
 $('backHouse').addEventListener('click', showHouse);
+$('needsBar').addEventListener('click', () => { const st = $('stats'); st.scrollIntoView({behavior: reduced ? 'auto' : 'smooth', block: 'center'}); st.animate && st.animate([{boxShadow:'0 0 0 3px var(--accent)'}, {boxShadow:'0 0 0 0 transparent'}], {duration: 1400}); });
 $('editBtn').addEventListener('click', () => {
   editMode = !editMode; dragF = null;
   if (editMode){ const r = curRoom(); toast(r && r.furnOn.length ? 'Trascina i mobili per spostarli. Toccane uno per toglierlo.' : 'Questa stanza non ha mobili: comprali nel negozio, reparto Arredo.', 3200); }
@@ -1630,6 +1646,7 @@ const statEls = {};
     d.innerHTML = `<div class="row"><span>${l}</span><span>0</span></div><div class="bar"><i style="background:${statColor[k]}"></i></div>`;
     $('stats').appendChild(d); statEls[k] = d;
   }
+  $('needsBar').innerHTML = STATS.map(([k, l]) => `<div class="nd" data-k="${k}" title="${l}"><span class="ring" style="--c:${statColor[k]};--p:0"><span class="ic">${statIcon[k]}</span></span><small>${l}</small></div>`).join('');
   const bd = document.createElement('p'); bd.id = 'bodyLine'; bd.className = 'shopnote'; bd.style.cssText = 'grid-column:1/-1;margin:0'; $('stats').appendChild(bd);
 })();
 
@@ -1731,6 +1748,8 @@ function render(full){
     el.querySelector('i').style.width = (egg ? 0 : v) + '%';
     el.classList.toggle('low', !egg && v < 25);
   }
+  { const nb = $('needsBar'); nb.hidden = egg || !s || !world;
+    if (!nb.hidden) for (const [k, l] of STATS){ const v = Math.round(s[k]), el = nb.querySelector(`[data-k="${k}"]`); el.querySelector('.ring').style.setProperty('--p', v); el.classList.toggle('low', v < 25); el.querySelector('small').textContent = v < 25 ? `${l} ${v}` : l; el.title = `${l}: ${v}%`; } }
   { const bl = $('bodyLine'); if (egg || !s){ bl.textContent = ''; } else { const bo = bodyOf(s), B = BODY[bo]; bl.innerHTML = `Corporatura: <b>${B.e} ${B.n}</b> · ${B.tip}${bo === 'obeso' ? ` (${Math.round(s.fat)}%)` : ''}`; } }
   const live = s && !egg && !s.walk;
   const wishTool = w && ({food:'food', cuddle:'hand', ball:'hand', throw:'hand', trick:'hand', hoop:'hand', dunk:'hand', tickle:'hand', bath:'sponge', game:'play', walk:'walk'})[w.type];
@@ -4532,7 +4551,7 @@ setInterval(tick, 1000);
 setTimeout(tick, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); else if (state) save(); });
 window.addEventListener('pagehide', () => { if (state) save(); });
-const APP_VERSION = 21;
+const APP_VERSION = 22;
 /* niente zoom su iPhone: né doppio tocco né pizzico */
 document.addEventListener('gesturestart', e => e.preventDefault(), {passive: false});
 document.addEventListener('dblclick', e => e.preventDefault(), {passive: false});
