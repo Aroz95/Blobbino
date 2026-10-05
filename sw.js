@@ -1,6 +1,6 @@
 // Blobbino: funziona anche offline.
 // Cambia VERSION quando pubblichi una nuova versione dell'app.
-const VERSION = 'blobbino-v24';
+const VERSION = 'blobbino-v25';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -23,7 +23,7 @@ self.addEventListener('fetch', e => {
   // Pagina: prima la rete (così ricevi gli aggiornamenti), poi la copia salvata.
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req.url, {cache: 'no-store', credentials: 'same-origin'})
+      fetch(new URL('./index.html?fresh=' + Date.now(), self.registration.scope).href, {cache: 'no-store', credentials: 'same-origin'})
         .then(res => { const copy = res.clone(); caches.open(VERSION).then(c => c.put('./index.html', copy)); return res; })
         .catch(() => caches.match('./index.html'))
     );
