@@ -372,7 +372,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
       <div class="row" style="margin-top:4px"><span class="next" id="trustHint"></span><span class="next" style="white-space:nowrap">Fiducia <b id="trustVal">60</b></span></div>
     </section>
 
-    <section class="card stats" id="stats" aria-label="Bisogni"></section>
+    <section class="card stats" id="stats" aria-label="Bisogni" hidden></section>
 
     <section class="card diary" aria-label="Diario">
       <h2 class="sec">Diario</h2>
@@ -382,7 +382,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 22</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 23</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -1233,7 +1233,15 @@ function renderRoomHead(){
     : `<span class="shopnote" style="align-self:center;white-space:nowrap">${esc(world.rooms[activeRoom].name)}</span>`;
 }
 $('backHouse').addEventListener('click', showHouse);
-$('needsBar').addEventListener('click', () => { const st = $('stats'); st.scrollIntoView({behavior: reduced ? 'auto' : 'smooth', block: 'center'}); st.animate && st.animate([{boxShadow:'0 0 0 3px var(--accent)'}, {boxShadow:'0 0 0 0 transparent'}], {duration: 1400}); });
+const NEED_TIP = {hunger:'Trascina il cibo alla sua bocca', thirst:'Dagli l\'acqua dal vassoio del cibo', fun:'Coccole, lanci, palla e minigiochi', energy:'Mettilo a nanna con 🌙', hygiene:'Lavalo con la spugna e pulisci la cacca', health:'Se sta male usa la medicina'};
+$('needsBar').addEventListener('click', () => {
+  const s = state; if (!s || s.stage === 'egg') return;
+  const bo = bodyOf(s), B = BODY[bo];
+  openSheet(`Come sta ${nm(s)}`, `<div class="rows">${STATS.map(([k, l]) => { const v = Math.round(s[k]);
+    return `<div class="rowi"><div class="em">${statIcon[k]}</div><div style="flex:1;min-width:0"><b>${l} · <span style="color:${v < 25 ? '#e5484d' : 'inherit'}">${v}%</span></b><span class="bar" style="display:block;margin:5px 0 3px"><i style="width:${v}%;background:${v < 25 ? '#e5484d' : statColor[k]}"></i></span><small>${NEED_TIP[k]}</small></div></div>`; }).join('')}
+    <div class="rowi"><div class="em">${B.e}</div><div><b>Corporatura · ${B.n}${bo === 'obeso' ? ` (${Math.round(s.fat)}%)` : ''}</b><small>${B.tip}</small></div></div></div>
+    <div class="sheet-actions"><button class="btn" data-close type="button">Chiudi</button></div>`);
+});
 $('editBtn').addEventListener('click', () => {
   editMode = !editMode; dragF = null;
   if (editMode){ const r = curRoom(); toast(r && r.furnOn.length ? 'Trascina i mobili per spostarli. Toccane uno per toglierlo.' : 'Questa stanza non ha mobili: comprali nel negozio, reparto Arredo.', 3200); }
@@ -1647,7 +1655,7 @@ const statEls = {};
     $('stats').appendChild(d); statEls[k] = d;
   }
   $('needsBar').innerHTML = STATS.map(([k, l]) => `<div class="nd" data-k="${k}" title="${l}"><span class="ring" style="--c:${statColor[k]};--p:0"><span class="ic">${statIcon[k]}</span></span><small>${l}</small></div>`).join('');
-  const bd = document.createElement('p'); bd.id = 'bodyLine'; bd.className = 'shopnote'; bd.style.cssText = 'grid-column:1/-1;margin:0'; $('stats').appendChild(bd);
+  const bd = document.createElement('p'); bd.id = 'bodyLine'; bd.className = 'shopnote'; bd.style.cssText = 'grid-column:1/-1;margin:4px 0 0;text-align:center;font-size:12px'; $('needsBar').appendChild(bd);
 })();
 
 const HINTS = {
@@ -4551,7 +4559,7 @@ setInterval(tick, 1000);
 setTimeout(tick, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); else if (state) save(); });
 window.addEventListener('pagehide', () => { if (state) save(); });
-const APP_VERSION = 22;
+const APP_VERSION = 23;
 /* niente zoom su iPhone: né doppio tocco né pizzico */
 document.addEventListener('gesturestart', e => e.preventDefault(), {passive: false});
 document.addEventListener('dblclick', e => e.preventDefault(), {passive: false});
