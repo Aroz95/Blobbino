@@ -25,4 +25,3 @@ Il tuo blob virtuale da nutrire, coccolare e far crescere. È una web app: si in
 ## Aggiornare l'app
 
 Carica i file nuovi nel repository e cambia `VERSION` in `sw.js` (per esempio `blobbino-v2`). L'app si aggiorna da sola alla prima apertura con internet.
-
