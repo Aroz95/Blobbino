@@ -391,7 +391,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 25</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 26</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -515,7 +515,7 @@ const VARS = {
     righe:     {n:'Uovo di pioggia',  r:1, pal:{a:'#f3fbff', b:'#cfe9ff'}, pat:'gocce',   pc:'rgba(90,170,255,.7)'},
     cuori:     {n:'Uovo dei cuori',   r:1, pal:{a:'#fff5f8', b:'#ffd6e4'}, pat:'cuori',   pc:'#ff86ad'},
     foglie:    {n:'Uovo di bosco',    r:1, pal:{a:'#f6fff0', b:'#d6f2c6'}, pat:'macchie', pc:'rgba(110,200,105,.6)'},
-    zigzag:    {n:'Uovo fulmine',     r:2, pal:{a:'#fffbe6', b:'#ffeaa0'}, pat:'saette',  pc:'rgba(255,150,0,.85)'},
+    zigzag:    {n:'Uovo di zucchero', r:2, pal:{a:'#fff6fa', b:'#ffd6e8'}, pat:'pois',    pc:'#ff86ad'},
     stelle:    {n:'Uovo stellato',    r:2, pal:{a:'#fff9e8', b:'#ffe6a8'}, pat:'stelle',  pc:'#ffbf1f'},
     nuvole:    {n:'Uovo nuvoloso',    r:2, pal:{a:'#eaf5ff', b:'#a9d4ff'}, pat:'nuvole',  pc:'rgba(255,255,255,.95)'},
     maculato:  {n:'Uovo maculato',    r:2, pal:{a:'#ffffff', b:'#eee6e0'}, pat:'macchie', pc:'rgba(80,62,62,.8)'},
@@ -525,48 +525,65 @@ const VARS = {
     drago:     {n:'Uovo di drago',    r:4, pal:{a:'#ffb36b', b:'#e0452f'}, pat:'squame',  pc:'rgba(255,215,106,.8)'}
   },
   baby: {
-    pois:      {n:'Cucciolo',    e:'🐣', r:1, feat:['base']},
-    righe:     {n:'Gocciolina',  e:'💧', r:1, shape:'goccia', pal:{a:'#e6f6ff', b:'#7cc4ff'}},
-    cuori:     {n:'Cuoricino',   e:'💗', r:1, shape:'cuore', pal:{a:'#ffe1ea', b:'#ff7fa8'}},
-    foglie:    {n:'Peretta',     e:'🍐', r:1, shape:'pera', pal:{a:'#f6ffd1', b:'#b8dc5a'}, feat:['picciolo']},
-    zigzag:    {n:'Onigirino',   e:'🍙', r:2, shape:'triangolo', pal:{a:'#ffffff', b:'#e9e4ea'}, feat:['nori']},
-    stelle:    {n:'Stellina',    e:'🌟', r:2, shape:'stella', pal:{a:'#fffbe0', b:'#ffcf4a'}},
-    nuvole:    {n:'Nuvoletta',   e:'🌥️', r:2, shape:'nuvola', pal:{a:'#ffffff', b:'#c2e0ff'}},
-    maculato:  {n:'Macchietta',  e:'🐮', r:2, shape:'mochi', pal:{a:'#ffffff', b:'#e6ddd7'}, feat:['mucca'], pat:'macchie', pc:'rgba(70,55,55,.75)'},
-    arcobaleno:{n:'Fiorellino',  e:'🌼', r:3, shape:'fiore', pal:{a:'#fffbe6', b:'#ffb7d5'}, feat:['arco']},
-    galassia:  {n:'Pianetino',   e:'🪐', r:3, shape:'tondo', pal:{a:'#8b7be0', b:'#3a2f86'}, feat:['anello'], pat:'stelle', pc:'#fff3b0', dark:true},
-    cristallo: {n:'Cristallino', e:'💎', r:3, shape:'diamante', pal:{a:'#f2fdff', b:'#8fdcff'}, pat:'cristallo'},
-    drago:     {n:'Draghetto',   e:'🐲', r:4, shape:'pera', pal:{a:'#ffc08a', b:'#ff6a3d'}, feat:['cresta', 'cornini', 'ali']}
+    pois:      {n:'Cucciolo',      e:'🐣', r:1, feat:['base']},
+    righe:     {n:'Gocciolina',    e:'💧', r:1, shape:'goccia', pal:{a:'#e6f6ff', b:'#7cc4ff'}},
+    cuori:     {n:'Cuoricino',     e:'💗', r:1, shape:'cuore', pal:{a:'#ffe1ea', b:'#ff7fa8'}},
+    foglie:    {n:'Peretta',       e:'🍐', r:1, shape:'pera', pal:{a:'#f6ffd1', b:'#b8dc5a'}, feat:['picciolo']},
+    zigzag:    {n:'Confettino',    e:'🍬', r:2, shape:'uovo', pal:{a:'#fff3f8', b:'#ffb8d5'}, pat:'pois', pc:'rgba(255,255,255,.85)'},
+    stelle:    {n:'Stellina',      e:'🌟', r:2, shape:'stella', pal:{a:'#fffbe0', b:'#ffcf4a'}},
+    nuvole:    {n:'Nuvoletta',     e:'🌥️', r:2, shape:'nuvola', pal:{a:'#ffffff', b:'#c2e0ff'}},
+    maculato:  {n:'Macchietta',    e:'🐮', r:2, shape:'mochi', pal:{a:'#ffffff', b:'#e6ddd7'}, feat:['mucca'], pat:'macchie', pc:'rgba(70,55,55,.75)'},
+    arcobaleno:{n:'Arcobalenino',  e:'🌈', r:3, shape:'tondo', pal:{a:'#ffffff', b:'#e7dcff'}, feat:['arco'], pat:'arcobaleno'},
+    galassia:  {n:'Pianetino',     e:'🪐', r:3, shape:'tondo', pal:{a:'#8b7be0', b:'#3a2f86'}, feat:['anello'], pat:'stelle', pc:'#fff3b0', dark:true},
+    cristallo: {n:'Cristallino',   e:'💎', r:3, shape:'diamante', pal:{a:'#f2fdff', b:'#8fdcff'}, pat:'cristallo'},
+    drago:     {n:'Draghetto',     e:'🐲', r:4, shape:'pera', pal:{a:'#ffc08a', b:'#ff6a3d'}, feat:['cresta', 'cornini', 'ali']}
   },
   child: {
-    morbidello: {n:'Morbidello', e:'🧸', r:1, fam:'morbidello', feat:['base']},
-    micetto:    {n:'Micetto',    e:'🐱', r:1, fam:'morbidello', shape:'mochi', pal:{a:'#ffe9d6', b:'#ffb27a'}, feat:['gatto', 'baffi'], aff:['foglie','maculato','pois']},
-    pasticcino: {n:'Pasticcino', e:'🧁', r:2, fam:'morbidello', shape:'fragola', pal:{a:'#fff0f6', b:'#ffb8d5'}, feat:['pirottino', 'panna'], aff:['cuori','zigzag'], care:'sweet'},
-    fiocco:     {n:'Fiocco di neve', e:'❄️', r:2, fam:'morbidello', shape:'fiore6', pal:{a:'#f7fdff', b:'#b3dcff'}, feat:['fiocco'], aff:['nuvole','righe','cristallo'], care:'clean'},
-    sognino:    {n:'Sognino',    e:'🌙', r:3, fam:'morbidello', shape:'campana', pal:{a:'#9a90e6', b:'#3c3480'}, feat:['berretto'], pat:'stelle', pc:'#fff3b0', dark:true, aff:['galassia','stelle'], care:'night'},
-    unicorno:   {n:'Unicornino', e:'🦄', r:4, fam:'morbidello', shape:'cuore', pal:{a:'#ffffff', b:'#f0d9ff'}, feat:['corno'], pat:'arcobaleno', aff:['arcobaleno','cristallo']},
-    saltello:   {n:'Saltello',   e:'🦘', r:1, fam:'saltello', feat:['base']},
-    coniglietto:{n:'Coniglietto',e:'🐰', r:1, fam:'saltello', shape:'uovo', pal:{a:'#fff6f0', b:'#f2c9b8'}, feat:['coniglio'], aff:['cuori','pois','nuvole']},
-    scintilla:  {n:'Scintilla',  e:'✨', r:2, fam:'saltello', shape:'stella4', pal:{a:'#fff6bf', b:'#ffc23a'}, aff:['zigzag','stelle'], care:'game'},
-    trottola:   {n:'Dadino',     e:'🎲', r:2, fam:'saltello', shape:'cubo', pal:{a:'#ffffff', b:'#e4def0'}, pat:'dado', pc:'#ff5c8d', aff:['righe','foglie'], care:'throw'},
-    cometa:     {n:'Cometina',   e:'☄️', r:3, fam:'saltello', shape:'stella', pal:{a:'#6d7fe0', b:'#26306e'}, pat:'stelle', pc:'#ffe9a0', dark:true, aff:['galassia','stelle'], care:'walk'},
-    draghino:   {n:'Draghino',   e:'🐉', r:4, fam:'saltello', shape:'pera', pal:{a:'#c9f59a', b:'#5cbf5a'}, feat:['cresta', 'cornini', 'ali'], aff:['drago','foglie']}
+    morbidello: {n:'Morbidello',     e:'🧸', r:1, fam:'morbidello', line:'pois', feat:['base']},
+    saltello:   {n:'Saltello',       e:'🦘', r:1, fam:'saltello', line:'pois', feat:['base']},
+    goccione:   {n:'Goccione',       e:'💧', r:1, line:'righe', shape:'goccia', pal:{a:'#dff1ff', b:'#5fb0f5'}, feat:['goccia'], pat:'gocce', pc:'rgba(255,255,255,.7)'},
+    amorino:    {n:'Amorino',        e:'💘', r:1, line:'cuori', shape:'cuore', pal:{a:'#ffe1ea', b:'#ff6f9c'}, feat:['ali']},
+    germoglio:  {n:'Germoglio',      e:'🌿', r:1, line:'foglie', shape:'pera', pal:{a:'#eaffd9', b:'#8fd06a'}, feat:['foglia']},
+    pasticcino: {n:'Pasticcino',     e:'🧁', r:2, line:'zigzag', shape:'fragola', pal:{a:'#fff0f6', b:'#ffb8d5'}, feat:['pirottino', 'panna']},
+    cometa:     {n:'Cometina',       e:'☄️', r:2, line:'stelle', shape:'stella', pal:{a:'#6d7fe0', b:'#26306e'}, pat:'stelle', pc:'#ffe9a0', dark:true},
+    batuffolo:  {n:'Batuffolo',      e:'☁️', r:2, line:'nuvole', shape:'nuvola', pal:{a:'#ffffff', b:'#b5d8ff'}, feat:['ciuffo']},
+    vitellino:  {n:'Vitellino',      e:'🐄', r:2, line:'maculato', shape:'mochi', pal:{a:'#ffffff', b:'#ddd2ca'}, feat:['mucca'], pat:'macchie', pc:'rgba(70,55,55,.8)'},
+    unicorno:   {n:'Unicornino',     e:'🦄', r:3, line:'arcobaleno', shape:'cuore', pal:{a:'#ffffff', b:'#f0d9ff'}, feat:['corno'], pat:'arcobaleno'},
+    satellino:  {n:'Satellino',      e:'🛰️', r:3, line:'galassia', shape:'tondo', pal:{a:'#7c6ed6', b:'#2c2470'}, feat:['anello', 'antenne'], pat:'stelle', pc:'#fff3b0', dark:true},
+    fiocco:     {n:'Fiocco di neve', e:'❄️', r:3, line:'cristallo', shape:'fiore6', pal:{a:'#f7fdff', b:'#9fd4ff'}, feat:['fiocco']},
+    draghino:   {n:'Draghino',       e:'🐉', r:4, line:'drago', shape:'pera', pal:{a:'#ffb37a', b:'#f0552e'}, feat:['cresta', 'cornini', 'ali']}
   },
   adult: {
-    iride:      {n:'Nuvola Arcobaleno',   e:'🌈', r:3, base:'nuvola',      shape:'nuvola',   pal:{a:'#ffffff', b:'#d8ccff'}, pat:'arcobaleno'},
-    cioccolato: {n:'Budino al cioccolato',e:'🍫', r:3, base:'budino',      shape:'campana',  pal:{a:'#e6bf98', b:'#8a5532'}},
-    ciliegio:   {n:'Fior di Ciliegio',    e:'💮', r:3, base:'bocciolo',    shape:'fiore',    pal:{a:'#fff4f8', b:'#ffb0cd'}},
-    galattica:  {n:'Gelatina Galattica',  e:'🌌', r:4, base:'gelatina',    shape:'goccia',   pal:{a:'#8a77e0', b:'#2a2060'}, pat:'stelle', pc:'#fff3b0', dark:true},
-    aurora:     {n:'Lumino Aurora',       e:'🌠', r:4, base:'lumino',      shape:'stella4',  pal:{a:'#6fd8c6', b:'#3c3f9e'}, dark:true},
-    supernova:  {n:'Supernova',           e:'💫', r:3, base:'stellino',    shape:'stella',   pal:{a:'#ffe0f0', b:'#ff7fbf'}},
-    spaziale:   {n:'Razzo Spaziale',      e:'🛸', r:3, base:'razzo',       shape:'goccia',   pal:{a:'#f2f5fa', b:'#a3b4cc'}},
-    tennis:     {n:'Pallone da Rugby',    e:'🏉', r:3, base:'pallino',     shape:'mochi',    pal:{a:'#e9b98a', b:'#a8622d'}},
-    pirata:     {n:'Esploratore Pirata',  e:'🦜', r:3, base:'esploratore', shape:'pera',     pal:{a:'#d4ece7', b:'#3f8f87'}, feat:['bandana']},
-    arlecchino: {n:'Arlecchino',          e:'🃏', r:3, base:'saltimbanco', shape:'diamante', pal:{a:'#ffe2ec', b:'#ff6f91'}, pat:'pois', pc:'rgba(255,215,90,.8)'},
-    fungo:      {n:'Funghetto',           e:'🍄', r:4, base:'muschio',     shape:'uovo',     pal:{a:'#fff8ec', b:'#efd9bb'}, feat:['cappellofungo']},
-    eclissi:    {n:'Eclissi',             e:'🌘', r:4, base:'ombra',       shape:'triangolo',pal:{a:'#3e3363', b:'#120d24'}, pat:'stelle', pc:'#ffd76a', dark:true}
+    iride:      {n:'Nuvola Arcobaleno',    e:'🌈', r:1, line:'righe', way:'care', base:'nuvola',      shape:'nuvola',   pal:{a:'#ffffff', b:'#d8ccff'}, pat:'arcobaleno'},
+    getto:      {n:'Getto',                e:'💦', r:1, line:'righe', way:'play', base:'razzo',       shape:'goccia',   pal:{a:'#d6efff', b:'#2f8fe0'}, feat:['goccia'], pat:'gocce', pc:'rgba(255,255,255,.7)'},
+    cuorpanna:  {n:'Cuor di Panna',        e:'🍰', r:1, line:'cuori', way:'care', base:'budino',      shape:'cuore',    pal:{a:'#fff6ee', b:'#ffc0d2'}, feat:['panna']},
+    cupido:     {n:'Cupido',               e:'🏹', r:1, line:'cuori', way:'play', base:'saltimbanco', shape:'cuore',    pal:{a:'#ffe6ef', b:'#ff5c8d'}, feat:['ali', 'cuore']},
+    alberello:  {n:'Alberello',            e:'🌳', r:1, line:'foglie', way:'care', base:'bocciolo',   shape:'nuvola',   pal:{a:'#e3ffd2', b:'#5fbf5a'}, feat:['foglia']},
+    boschivo:   {n:'Esploratore dei Boschi', e:'🌰', r:1, line:'foglie', way:'play', base:'esploratore', deco:true, shape:'pera',  pal:{a:'#f1dcc0', b:'#a0703f'}},
+    cioccolato: {n:'Budino al cioccolato', e:'🍫', r:2, line:'zigzag', way:'care', base:'budino', deco:true,     shape:'campana',  pal:{a:'#e6bf98', b:'#8a5532'}},
+    leccalecca: {n:'Lecca-lecca',          e:'🍭', r:2, line:'zigzag', way:'play', base:'pallino',    shape:'tondo',    pal:{a:'#fff0f7', b:'#ff8fc0'}, pat:'spirale', pc:'rgba(255,255,255,.75)'},
+    aurora:     {n:'Lumino Aurora',        e:'🌠', r:2, line:'stelle', way:'care', base:'lumino',     shape:'stella4',  pal:{a:'#6fd8c6', b:'#3c3f9e'}, dark:true},
+    supernova:  {n:'Supernova',            e:'💫', r:2, line:'stelle', way:'play', base:'stellino',   shape:'stella',   pal:{a:'#ffe0f0', b:'#ff7fbf'}},
+    cumulo:     {n:'Cumulo',               e:'☁️', r:2, line:'nuvole', way:'care', base:'nuvola',     shape:'nuvola',   pal:{a:'#ffffff', b:'#cfe6ff'}, feat:['ciuffo']},
+    temporale:  {n:'Temporale',            e:'⛈️', r:2, line:'nuvole', way:'play', base:'razzo',      shape:'nuvola',   pal:{a:'#9fb0cf', b:'#4a5878'}, feat:['saetta'], dark:true},
+    mucchina:   {n:'Mucchina dei Fiori',   e:'🌼', r:2, line:'maculato', way:'care', base:'bocciolo', shape:'mochi',    pal:{a:'#ffffff', b:'#ffd6e4'}, feat:['mucca'], pat:'macchie', pc:'rgba(255,130,170,.6)'},
+    torello:    {n:'Torello',              e:'🐂', r:2, line:'maculato', way:'play', base:'pallino',  shape:'mochi',    pal:{a:'#e8c8a8', b:'#9a6038'}, feat:['cornini'], pat:'macchie', pc:'rgba(60,35,25,.6)'},
+    unicornone: {n:'Unicorno',             e:'🦄', r:3, line:'arcobaleno', way:'care', base:'gelatina', shape:'uovo',   pal:{a:'#ffffff', b:'#ecdcff'}, feat:['corno'], pat:'arcobaleno'},
+    pegaso:     {n:'Pegaso',               e:'🪽', r:3, line:'arcobaleno', way:'play', base:'saltimbanco', shape:'uovo', pal:{a:'#f6f0ff', b:'#bfa6ff'}, feat:['corno', 'ali']},
+    galattica:  {n:'Gelatina Galattica',   e:'🌌', r:3, line:'galassia', way:'care', base:'gelatina', shape:'goccia',   pal:{a:'#8a77e0', b:'#2a2060'}, pat:'stelle', pc:'#fff3b0', dark:true},
+    spaziale:   {n:'Razzo Spaziale',       e:'🛸', r:3, line:'galassia', way:'play', base:'razzo',    shape:'goccia',   pal:{a:'#f2f5fa', b:'#a3b4cc'}},
+    cristneve:  {n:'Cristallo di Neve',    e:'❄️', r:3, line:'cristallo', way:'care', base:'lumino',  shape:'diamante', pal:{a:'#f4fdff', b:'#9fdcff'}, feat:['fiocco'], pat:'cristallo'},
+    prisma:     {n:'Prisma',               e:'🔷', r:3, line:'cristallo', way:'play', base:'stellino', shape:'diamante', pal:{a:'#ffffff', b:'#c9e4ff'}, pat:'arcobaleno'},
+    dragoluna:  {n:'Drago Lunare',         e:'🌙', r:4, line:'drago', way:'care', base:'lumino',      shape:'pera',     pal:{a:'#8f7fe0', b:'#3a2c86'}, feat:['cresta', 'cornini', 'ali'], pat:'stelle', pc:'#fff3b0', dark:true},
+    dragofuoco: {n:'Drago di Fuoco',       e:'🔥', r:4, line:'drago', way:'play', base:'razzo',       shape:'pera',     pal:{a:'#ffb070', b:'#e0352a'}, feat:['cresta', 'cornini', 'ali']}
   }
 };
+/* linee evolutive: ogni uovo ha la sua; coccole o gioco decidono l'adulto */
+const LINES = {pois:{n:'Classica', e:'🐣'}, righe:{n:'Pioggia', e:'💧'}, cuori:{n:'Amore', e:'💗'}, foglie:{n:'Bosco', e:'🌿'}, zigzag:{n:'Dolci', e:'🍬'}, stelle:{n:'Stelle', e:'🌟'},
+  nuvole:{n:'Cielo', e:'☁️'}, maculato:{n:'Fattoria', e:'🐮'}, arcobaleno:{n:'Arcobaleno', e:'🌈'}, galassia:{n:'Spazio', e:'🪐'}, cristallo:{n:'Ghiaccio', e:'💎'}, drago:{n:'Drago', e:'🐲'}};
+const lineOf = b => (b && (b.bv || b.egg)) || 'pois';
+const lineChild = line => Object.keys(VARS.child).find(k => VARS.child[k].line === line);
+const lineAdult = (line, way) => Object.keys(VARS.adult).find(k => VARS.adult[k].line === line && VARS.adult[k].way === way);
 /* forme del corpo: punto sul contorno per l'angolo a (0 = destra, giù = positivo) */
 function shapeXY(shape, a){
   let x = Math.cos(a), y = Math.sin(a); const k = (y + 1) / 2;
@@ -595,7 +612,7 @@ const FACE_DY = {pera:.14, campana:.08, goccia:.16, triangolo:.14, fragola:-.04,
 const ADULT_R = {nuvola:1, budino:1, bocciolo:1, stellino:1, razzo:1, pallino:1, gelatina:2, lumino:2, esploratore:2, saltimbanco:2, muschio:3, ombra:3};
 const ADULT_ORDER = ['nuvola','budino','bocciolo','gelatina','lumino','stellino','razzo','pallino','esploratore','saltimbanco','muschio','ombra'];
 function dexList(st){
-  if (st === 'adult'){ const out = []; for (const f of ADULT_ORDER){ out.push(f); for (const k in VARS.adult) if (VARS.adult[k].base === f) out.push(k); } return out; }
+  if (st === 'adult') return [...ADULT_ORDER, ...Object.keys(VARS.adult)];
   return Object.keys(VARS[st]);
 }
 function dexInfo(st, k){
@@ -605,8 +622,8 @@ function dexInfo(st, k){
 function specOf(st, k){
   const b = {id:'dex_' + st + k, stage: st, egg:'pois', bv:'pois', cv:null, childForm:null, form:null, av:null, shiny:false, hat:null, face:null, neck:null, back:null};
   if (st === 'egg') b.egg = k; else if (st === 'baby') b.bv = k;
-  else if (st === 'child'){ b.cv = k; b.childForm = VARS.child[k].fam; }
-  else if (FORMS[k]) b.form = k; else { b.av = k; b.form = VARS.adult[k].base; }
+  else if (st === 'child'){ b.cv = k; b.childForm = VARS.child[k].fam || 'morbidello'; b.bv = VARS.child[k].line || 'pois'; b.egg = b.bv; }
+  else if (FORMS[k]) b.form = k; else { b.av = k; b.form = VARS.adult[k].base; b.bv = b.egg = VARS.adult[k].line; b.cv = lineChild(b.bv); b.childForm = VARS.adult[k].way === 'play' ? 'saltello' : 'morbidello'; }
   return b;
 }
 const ROOM_NAMES = ['Cameretta', 'Stanza dei giochi', 'Soffitta', 'Serra'];
@@ -836,20 +853,16 @@ function rollEgg(parent){
   return pickWeighted(Object.keys(VARS.egg).map(k => { const r = VARS.egg[k].r; return [k, RAR[r].w * (r >= 3 ? boost : 1)]; }));
 }
 function pickChildVar(s){
-  const c = s.care || {}, g = k => c[k] || 0, fam = s.childForm || 'morbidello';
-  const opts = Object.keys(VARS.child).filter(k => VARS.child[k].fam === fam).map(k => {
-    const V = VARS.child[k]; let w = RAR[V.r].w;
-    if (V.aff && V.aff.includes(s.bv)) w *= 4;
-    if (V.care) w += g(V.care) * (V.care === 'night' ? .12 : .35);
-    if (V.r >= 3 && bestRar(s) >= 3) w *= 1.8;
-    return [k, w]; });
-  return pickWeighted(opts);
+  const line = lineOf(s);
+  if (line === 'pois') return s.childForm || 'morbidello';
+  return lineChild(line) || s.childForm || 'morbidello';
 }
-function rollAdultVar(s){
-  const k = Object.keys(VARS.adult).find(x => VARS.adult[x].base === s.form); if (!k) return null;
-  let p = .07 + (VARS.baby[s.bv] && VARS.baby[s.bv].r >= 3 ? .08 : 0) + (VARS.child[s.cv] && VARS.child[s.cv].r >= 3 ? .08 : 0);
-  if (world && world.dev) p = .5;
-  return Math.random() < p ? k : null;
+function pickAdult(s){
+  const line = lineOf(s), f = pickForm(s);
+  if (FORMS[f] && FORMS[f].secret) return {form: f, av: null};
+  if (line === 'pois') return {form: f, av: null};
+  const av = lineAdult(line, s.childForm === 'saltello' ? 'play' : 'care');
+  return av ? {form: VARS.adult[av].base, av} : {form: f, av: null};
 }
 function newBlob(name, parent){
   const now = Date.now();
@@ -883,8 +896,20 @@ function migrateBlob(b){
   if (!b.egg || !VARS.egg[b.egg]) b.egg = 'pois';
   if (b.stage !== 'egg' && !VARS.baby[b.bv]) b.bv = b.egg;
   if ((b.stage === 'child' || b.stage === 'adult') && !VARS.child[b.cv]) b.cv = b.childForm || (FORMS[b.form] && FORMS[b.form].fam) || 'morbidello';
-  if (b.av && !VARS.adult[b.av]) b.av = null;
   if (b.av === undefined) b.av = null;
+  { const line = lineOf(b);
+    if (b.stage === 'child' || b.stage === 'adult'){
+      if (line === 'pois'){ if (!['morbidello','saltello'].includes(b.cv)) b.cv = b.childForm === 'saltello' ? 'saltello' : 'morbidello'; }
+      else b.cv = lineChild(line) || b.cv;
+      if (!b.childForm) b.childForm = (FORMS[b.form] && FORMS[b.form].fam) || 'morbidello';
+    }
+    if (b.stage === 'adult'){
+      if (FORMS[b.form] && FORMS[b.form].secret){ b.av = null; }
+      else if (line === 'pois'){ b.av = null; }
+      else { const way = (FORMS[b.form] && FORMS[b.form].fam === 'saltello') || b.childForm === 'saltello' ? 'play' : 'care', av = lineAdult(line, way); if (av && b.av !== av){ b.av = av; b.form = VARS.adult[av].base; } }
+    }
+    if (b.av && !VARS.adult[b.av]) b.av = null;
+  }
   if (b.wish && !b.wish.type) b.wish = null;
   return b;
 }
@@ -1004,7 +1029,7 @@ function formScores(s){
 function pickForm(s){ const sc = formScores(s); return Object.keys(sc).reduce((a, b) => sc[b] > sc[a] ? b : a); }
 function trendOf(s){
   if (s.stage === 'baby') return pickChild(s) === 'saltello' ? 'giocherellona' : 'coccolona';
-  if (s.stage === 'child') return FORMS[pickForm(s)].trend;
+  if (s.stage === 'child'){ const A = pickAdult(s); return A.av ? `verso ${VARS.adult[A.av].n}` : FORMS[A.form].trend; }
   return '';
 }
 
@@ -1060,7 +1085,7 @@ function simulate(s, to){
       log(s, t, `${nm(s)} è cresciuto: è diventato un ${formName(s)}!`); ev = true; evoQueue.push(s.id);
     }
     if (s.stage === 'child' && age >= 12){
-      s.stage = 'adult'; s.form = pickForm(s); s.adultAt = t; s.av = rollAdultVar(s); const F = FORMS[s.form];
+      s.stage = 'adult'; { const A = pickAdult(s); s.form = A.form; s.av = A.av; } s.adultAt = t; const F = FORMS[s.form];
       seeForm('adult:' + (s.av || s.form), s);
       if (STICKERS['evo_' + s.form]) giveSticker(s, 'evo_' + s.form, t);
       log(s, t, `${nm(s)} si è evoluto in ${formName(s)}${s.shiny ? ' dorato' : ''}! ${F.ab}`); ev = true; evoQueue.push(s.id);
@@ -1296,7 +1321,7 @@ function showEvo(id){
   const k = kindOf(b), F = FORMS[k], r = rarOf(b);
   if (state && state.id === id){ burst('confetti', 40); sfx.level(); }
   openSheet(b.stage === 'adult' ? `${nm(b)} si è evoluto!` : `${nm(b)} è cresciuto!`, `<div class="loot"><canvas class="dexbig" id="evoCv" width="360" height="360" aria-label="${formName(b)}"></canvas>
-    <p style="text-align:center"><b>${formName(b)}${b.shiny ? ' dorato ✨' : ''}</b></p><p class="rarline" style="color:${RAR[r].c}">${rarStars(r)} ${RAR[r].n}${r >= 3 ? '!' : ''}</p><p class="story">${b.av ? `Variante rara di ${F.n}. ` : ''}${F.ab}</p>
+    <p style="text-align:center"><b>${formName(b)}${b.shiny ? ' dorato ✨' : ''}</b></p><p class="rarline" style="color:${RAR[r].c}">${rarStars(r)} ${RAR[r].n}${r >= 3 ? '!' : ''}</p><p class="story">${b.av ? `Linea ${LINES[VARS.adult[b.av].line].e} ${LINES[VARS.adult[b.av].line].n}. ` : ''}${F.ab}</p>
     ${b.stage === 'child' ? '<p class="shopnote">Da qui a 10 ore diventerà adulto. Come giochi con lui decide in cosa si trasformerà: guarda la sua tendenza in alto.</p>' : '<p class="shopnote">Lo trovi nell\'Enciclopedia dei blob. Se lo tratti bene, tra qualche ora potrebbe deporre un uovo.</p>'}</div>
     <div class="sheet-actions"><button class="btn" data-close type="button">Che bello!</button></div>`, body => drawSpecimen(body.querySelector('#evoCv'), b));
 }
@@ -2010,20 +2035,22 @@ function renderAlbum(){
 
 $('dexSeg').addEventListener('click', e => { const b = e.target.closest('[data-ds]'); if (!b) return; dexStage = b.dataset.ds; renderAlbum(); });
 function dexHow(st, k){
-  if (st === 'egg'){ const V = VARS.egg[k]; return (V.r >= 3 ? 'Un uovo raro: capita più spesso a chi ha genitori rari.' : V.r === 2 ? 'Un uovo non comunissimo.' : 'Un uovo comune.') + ' Le uova spesso somigliano a quelle dei genitori.'; }
-  if (st === 'baby') return `Nasce da un ${VARS.egg[k].n.toLowerCase()}.`;
-  if (st === 'child'){ const V = VARS.child[k], fam = V.fam === 'saltello' ? 'giochi tanto con lui: lanci, palla, minigiochi, passeggiate' : 'te ne prendi cura: carezze, pappa a mano, pulizia';
-    const aff = V.aff ? ` Più facile se da cucciolo era: ${V.aff.map(x => VARS.baby[x].n).join(', ')}.` : '';
-    const care = V.care ? ` Aiuta anche: ${({sweet:'tanti dolci', clean:'tanta pulizia', night:'coccole di sera', game:'tanti minigiochi', throw:'tanti lanci', walk:'tante passeggiate'})[V.care]}.` : '';
-    return `Un ${FORMS[V.fam].n.toLowerCase()} che nasce se ${fam}.${aff}${care}`; }
-  if (FORMS[k]){ const F = FORMS[k]; return F.secret ? 'Una forma segreta. Si dice che nasca quando un piccolo viene trascurato…' : `Nasce da un ${FORMS[F.fam].n} cresciuto con: ${F.hint.toLowerCase()}.`; }
-  const V = VARS.adult[k]; return `Variante rara di ${FORMS[V.base].n}: a volte compare al posto suo. Succede più spesso se da piccolo era già un blob raro.`;
+  const way = w => w === 'play' ? 'giochi tanto con lui (lanci, palla, minigiochi, passeggiate)' : 'te ne prendi cura (carezze, pappa a mano, pulizia)';
+  if (st === 'egg'){ const V = VARS.egg[k], L = LINES[k]; return `Linea ${L.e} ${L.n}. ` + (V.r >= 3 ? 'Un uovo raro: capita più spesso a chi ha genitori rari.' : V.r === 2 ? 'Un uovo non comunissimo.' : 'Un uovo comune.') + ' Le uova spesso somigliano a quelle dei genitori.'; }
+  if (st === 'baby'){ const L = LINES[k]; return `Linea ${L.e} ${L.n}: nasce da un ${VARS.egg[k].n.toLowerCase()}.`; }
+  if (st === 'child'){ const V = VARS.child[k], L = LINES[V.line];
+    if (V.line === 'pois') return `Linea ${L.e} ${L.n}: il Cucciolo diventa ${V.n} se ${way(V.fam === 'saltello' ? 'play' : 'care')}.`;
+    const A = lineAdult(V.line, 'care'), B = lineAdult(V.line, 'play');
+    return `Linea ${L.e} ${L.n}: cresce da ${VARS.baby[V.line].n}. Da grande diventa ${VARS.adult[A].n} oppure ${VARS.adult[B].n}.`; }
+  if (FORMS[k]){ const F = FORMS[k]; return F.secret ? 'Una forma segreta di qualsiasi linea. Si dice che nasca quando un piccolo viene trascurato…' : `Linea 🐣 Classica: nasce da un ${FORMS[F.fam].n} cresciuto con: ${F.hint.toLowerCase()}.`; }
+  const V = VARS.adult[k], L = LINES[V.line];
+  return `Linea ${L.e} ${L.n}: ${VARS.child[lineChild(V.line)].n} diventa ${V.n} se ${way(V.way)}. Abilità di ${FORMS[V.base].n}.`;
 }
 $('dex').addEventListener('click', e => {
   const el = e.target.closest('[data-k]'); if (!el) return;
   const k = el.dataset.k, st = dexStage, I = dexInfo(st, k), got = world && world.dex[st + ':' + k];
   const F = st === 'adult' ? FORMS[FORMS[k] ? k : VARS.adult[k].base] : null;
-  const ab = st === 'adult' ? F.ab : st === 'child' ? FORMS[VARS.child[k].fam].ab : st === 'baby' ? 'Appena nato, tutto da scoprire.' : '';
+  const ab = st === 'adult' ? F.ab : st === 'child' ? (VARS.child[k].fam ? FORMS[VARS.child[k].fam].ab : `Un piccolo della linea ${LINES[VARS.child[k].line].e} ${LINES[VARS.child[k].line].n}: coccole o gioco decideranno come cresce.`) : st === 'baby' ? 'Appena nato, tutto da scoprire.' : '';
   openSheet(got ? I.n : '???', `<div class="loot"><canvas class="dexbig" id="dexBig" aria-label="${got ? esc(I.n) : 'Non ancora scoperto'}"></canvas>
     <p class="rarline" style="color:${RAR[I.r].c}">${rarStars(I.r)} ${RAR[I.r].n}</p>
     ${got && ab ? `<p class="story">${ab}</p>` : ''}${got && st !== 'egg' ? `<div class="bodies">${['magro','normale','obeso'].map(bk => `<figure><canvas data-body="${bk}" aria-label="${BODY[bk].n}"></canvas><figcaption>${BODY[bk].n}</figcaption></figure>`).join('')}</div>` : ''}<p class="shopnote">${dexHow(st, k)}</p>
@@ -4441,6 +4468,7 @@ function drawPattern(c, pat, rx, ry, R, t, pc){
   else if (pat === 'dado'){ for (const [x, y] of [[-.62,-.5],[.62,-.5],[-.62,.52],[.62,.52]]){ c.beginPath(); c.arc(x*rx*.85, y*ry*.85, R*.075, 0, 7); c.fill(); } }
   else if (pat === 'gocce'){ PAT_PTS.slice(0, 7).forEach(([x, y], i) => { const X = x*rx, Y = y*ry, z = R*(.06 + (i % 2)*.03); c.beginPath(); c.moveTo(X, Y - z*1.8); c.quadraticCurveTo(X + z, Y, X, Y + z); c.quadraticCurveTo(X - z, Y, X, Y - z*1.8); c.fill(); }); }
   else if (pat === 'saette'){ PAT_PTS.slice(0, 6).forEach(([x, y], i) => { c.save(); c.translate(x*rx, y*ry); c.rotate(.3 - (i % 2)*.5); const z = R*.14; c.beginPath(); c.moveTo(-z*.2, -z); c.lineTo(z*.4, -z); c.lineTo(z*.05, -z*.15); c.lineTo(z*.45, -z*.15); c.lineTo(-z*.3, z); c.lineTo(-z*.05, z*.1); c.lineTo(-z*.4, z*.1); c.closePath(); c.fill(); c.restore(); }); }
+  else if (pat === 'spirale'){ c.lineWidth = R*.1; c.beginPath(); for (let a = 0; a < Math.PI * 7; a += .15){ const rr = R * .06 * a; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr * .9 + ry*.05); } c.stroke(); }
   else if (pat === 'rombi'){ const sp = R*.42; for (let y = -ry, j = 0; y < ry + sp; y += sp*.5, j++) for (let x = -rx + (j % 2)*sp/2; x < rx + sp; x += sp){ if ((j + Math.round(x / sp)) % 2) continue; c.beginPath(); c.moveTo(x, y - sp*.25); c.lineTo(x + sp*.25, y); c.lineTo(x, y + sp*.25); c.lineTo(x - sp*.25, y); c.closePath(); c.fill(); } }
   c.restore();
 }
@@ -4553,7 +4581,7 @@ function drawPet(t, s = state, P = pet, guest = false){
   if (s.stage === 'egg'){ P.y = gYl; drawEgg(t, s, P, R); return; }
   if (s.walk) return;
   const kind = kindOf(s), pal = palFor(s), m = currentExpr(s, P), V = varOf(s), feats = featsOf(V), baseLook = !V || (!V.feat && !V.shape) || feats.includes('base');
-  const shape = shapeOf(s), topU = shapeTop(shape);
+  const shape = shapeOf(s), topU = shapeTop(shape), deco = !V || !V.shape || !!V.deco;
   const FD = FORMS[kind] || {}, darkB = !s.shiny && V && 'dark' in V ? V.dark : FD.dark, INK = darkB ? '#fff6d8' : '#3b2842', HL = darkB ? '#2c3570' : '#fff';
   if (V && V.r >= 4 && !s.shiny){ const gl = ctx.createRadialGradient(P.x, P.y, R*.5, P.x, P.y, R*1.7); gl.addColorStop(0, pal.b + '55'); gl.addColorStop(1, pal.b + '00'); ctx.globalAlpha = .7 + .3*Math.sin(t*2); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(P.x, P.y, R*1.7, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
   if (V && V.r >= 3 && !s.shiny){ ctx.fillStyle = V.r >= 4 ? '#ffe9a6' : '#cfe0ff'; for (let i = 0; i < 2; i++){ const a = -t*1.1 + i*Math.PI; ctx.globalAlpha = .45 + .45*Math.sin(t*3.5 + i); star4(P.x + Math.cos(a)*R*1.2, P.y + Math.sin(a)*R*.85, R*.07); } ctx.globalAlpha = 1; }
@@ -4573,56 +4601,57 @@ function drawPet(t, s = state, P = pet, guest = false){
   ctx.translate(P.x, P.y + hopY + (P.sink || 0)); ctx.rotate(P.rot);
   ctx.translate(0, ry*.78); ctx.scale(sx, sy); ctx.translate(0, -ry*.78);
   // decorazioni dietro
-  if (kind === 'stellino' && !s.hat){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -ry*.9);
+  if (deco && kind === 'stellino' && !s.hat){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -ry*.9);
     ctx.quadraticCurveTo(R*.25*Math.sin(t*2), -ry*1.25, R*.1*Math.sin(t*2), -ry*1.45); ctx.stroke();
     ctx.fillStyle = '#ffcf3f'; star5(R*.1*Math.sin(t*2), -ry*1.5, R*.2); }
-  if (kind === 'morbidello' && baseLook){ ctx.fillStyle = pal.b; for (const d of [-1, 1]){ ctx.beginPath(); ctx.ellipse(d*rx*.55, -ry*.8, R*.2, R*.2, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#ffc6dc'; ctx.beginPath(); ctx.arc(d*rx*.55, -ry*.8, R*.1, 0, 7); ctx.fill(); ctx.fillStyle = pal.b; } }
-  if (kind === 'saltello' && baseLook){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.lineCap = 'round'; for (const d of [-1, 1]){ const sw = Math.sin(t*4 + d)*R*.08; ctx.beginPath(); ctx.moveTo(d*R*.3, -ry*.85); ctx.quadraticCurveTo(d*R*.45 + sw, -ry*1.2, d*R*.38 + sw, -ry*1.35); ctx.stroke(); ctx.fillStyle = '#ffcf3f'; ctx.beginPath(); ctx.arc(d*R*.38 + sw, -ry*1.38, R*.08, 0, 7); ctx.fill(); } }
-  if (kind === 'muschio' && !s.hat){ ctx.fillStyle = '#6fbf73'; ctx.save(); ctx.translate(0, -ry*.92); ctx.rotate(Math.sin(t*1.5)*.15);
+  if (deco && kind === 'morbidello' && baseLook){ ctx.fillStyle = pal.b; for (const d of [-1, 1]){ ctx.beginPath(); ctx.ellipse(d*rx*.55, -ry*.8, R*.2, R*.2, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#ffc6dc'; ctx.beginPath(); ctx.arc(d*rx*.55, -ry*.8, R*.1, 0, 7); ctx.fill(); ctx.fillStyle = pal.b; } }
+  if (deco && kind === 'saltello' && baseLook){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.lineCap = 'round'; for (const d of [-1, 1]){ const sw = Math.sin(t*4 + d)*R*.08; ctx.beginPath(); ctx.moveTo(d*R*.3, -ry*.85); ctx.quadraticCurveTo(d*R*.45 + sw, -ry*1.2, d*R*.38 + sw, -ry*1.35); ctx.stroke(); ctx.fillStyle = '#ffcf3f'; ctx.beginPath(); ctx.arc(d*R*.38 + sw, -ry*1.38, R*.08, 0, 7); ctx.fill(); } }
+  if (deco && kind === 'muschio' && !s.hat){ ctx.fillStyle = '#6fbf73'; ctx.save(); ctx.translate(0, -ry*.92); ctx.rotate(Math.sin(t*1.5)*.15);
     ctx.beginPath(); ctx.ellipse(-R*.12, -R*.12, R*.1, R*.2, -.7, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(R*.12, -R*.14, R*.1, R*.22, .7, 0, 7); ctx.fill(); ctx.restore(); }
-  if (kind === 'razzo'){ ctx.fillStyle = '#d94b4b'; for (const d of [-1, 1]){ ctx.beginPath(); ctx.moveTo(d*rx*.75, ry*.1); ctx.lineTo(d*rx*1.18, ry*.72); ctx.lineTo(d*rx*.55, ry*.62); ctx.closePath(); ctx.fill(); } }
-  if (kind === 'esploratore'){ ctx.fillStyle = '#8a5a2b'; roundRect(-rx*1.02, -ry*.35, rx*.5, ry*.9, R*.12); ctx.fill(); ctx.fillStyle = '#a8743f'; roundRect(-rx*.98, -ry*.1, rx*.42, ry*.3, R*.06); ctx.fill(); }
-  if (kind === 'lumino' && !s.hat){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -ry*.9); ctx.lineTo(0, -ry*1.25); ctx.stroke();
+  if (deco && kind === 'razzo'){ ctx.fillStyle = '#d94b4b'; for (const d of [-1, 1]){ ctx.beginPath(); ctx.moveTo(d*rx*.75, ry*.1); ctx.lineTo(d*rx*1.18, ry*.72); ctx.lineTo(d*rx*.55, ry*.62); ctx.closePath(); ctx.fill(); } }
+  if (deco && kind === 'esploratore'){ ctx.fillStyle = '#8a5a2b'; roundRect(-rx*1.02, -ry*.35, rx*.5, ry*.9, R*.12); ctx.fill(); ctx.fillStyle = '#a8743f'; roundRect(-rx*.98, -ry*.1, rx*.42, ry*.3, R*.06); ctx.fill(); }
+  if (deco && kind === 'lumino' && !s.hat){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -ry*.9); ctx.lineTo(0, -ry*1.25); ctx.stroke();
     const gl = .6 + .4*Math.sin(t*3); ctx.fillStyle = `rgba(255,230,120,${gl})`; ctx.beginPath(); ctx.arc(0, -ry*1.32, R*.12, 0, 7); ctx.fill(); }
   // braccino per il saluto
   if (P.anim && P.anim.type === 'wave'){ ctx.save(); ctx.translate(rx*.85, -ry*.1); ctx.rotate(-1.2 + Math.sin(P.anim.t*14)*.5); ctx.fillStyle = pal.b; ctx.beginPath(); ctx.ellipse(0, -R*.25, R*.13, R*.28, 0, 0, 7); ctx.fill(); ctx.restore(); }
   for (const f of feats) if (f !== 'base' && (!s.hat || SIDE_FEATS.has(f))) drawFeat(ctx, f, rx, ry, R, t, pal, 'back', topU);
   if (s.back) drawAcc(ctx, s.back, R, ry, t, pal);
-  if (kind === 'gelatina' || kind === 'ombra') ctx.globalAlpha = kind === 'ombra' ? .82 : .88;
+  if (deco && kind === 'gelatina' || kind === 'ombra') ctx.globalAlpha = kind === 'ombra' ? .82 : .88;
   blobPath(rx, ry, t, kind, P.wob, shape);
   const g = ctx.createRadialGradient(-rx*.35, -ry*.45, R*.1, 0, 0, R*1.15);
   g.addColorStop(0, pal.a); g.addColorStop(1, pal.b); ctx.fillStyle = g; ctx.fill();
   ctx.globalAlpha = 1;
   if (V && V.pat){ ctx.save(); ctx.clip(); drawPattern(ctx, V.pat, rx, ry, R, t, V.pc); ctx.restore(); blobPath(rx, ry, t, kind, P.wob, shape); }
   if (feats.length){ ctx.save(); for (const f of feats) if (f !== 'base' && (!s.hat || SIDE_FEATS.has(f) || f === 'baffi')) drawFeat(ctx, f, rx, ry, R, t, pal, 'front', topU); ctx.restore(); blobPath(rx, ry, t, kind, P.wob, shape); }
-  if (kind === 'gelatina'){ ctx.fillStyle = 'rgba(255,255,255,.45)'; for (let i = 0; i < 4; i++){ const a = t*.7 + i*1.7; ctx.beginPath(); ctx.arc(Math.cos(a)*R*.45, Math.sin(a*1.3)*R*.3 + R*.1, R*(.05 + (i % 2)*.03), 0, 7); ctx.fill(); } }
-  if (kind === 'lumino'){ for (let i = 0; i < 5; i++){ ctx.fillStyle = `rgba(255,230,120,${.5 + .5*Math.sin(t*2 + i)})`; ctx.beginPath(); ctx.arc(Math.cos(i*1.3)*R*.6, Math.sin(i*2.1)*R*.35 + R*.15, R*.045, 0, 7); ctx.fill(); } }
-  if (kind === 'pallino'){ ctx.save(); blobPath(rx, ry, t, kind, P.wob, shape); ctx.clip(); ctx.strokeStyle = 'rgba(90,40,10,.55)'; ctx.lineWidth = 2;
+  if (deco && kind === 'gelatina'){ ctx.fillStyle = 'rgba(255,255,255,.45)'; for (let i = 0; i < 4; i++){ const a = t*.7 + i*1.7; ctx.beginPath(); ctx.arc(Math.cos(a)*R*.45, Math.sin(a*1.3)*R*.3 + R*.1, R*(.05 + (i % 2)*.03), 0, 7); ctx.fill(); } }
+  if (deco && kind === 'lumino'){ for (let i = 0; i < 5; i++){ ctx.fillStyle = `rgba(255,230,120,${.5 + .5*Math.sin(t*2 + i)})`; ctx.beginPath(); ctx.arc(Math.cos(i*1.3)*R*.6, Math.sin(i*2.1)*R*.35 + R*.15, R*.045, 0, 7); ctx.fill(); } }
+  if (deco && kind === 'pallino'){ ctx.save(); blobPath(rx, ry, t, kind, P.wob, shape); ctx.clip(); ctx.strokeStyle = 'rgba(90,40,10,.55)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(-rx, ry*.05); ctx.quadraticCurveTo(0, ry*.25, rx, ry*.05); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, -ry); ctx.lineTo(0, -ry*.62); ctx.moveTo(0, ry*.55); ctx.lineTo(0, ry); ctx.stroke();
     ctx.beginPath(); ctx.arc(-rx*1.15, 0, rx*.6, -.9, .9); ctx.stroke(); ctx.beginPath(); ctx.arc(rx*1.15, 0, rx*.6, Math.PI - .9, Math.PI + .9); ctx.stroke(); ctx.restore();
     if (!s.hat){ ctx.fillStyle = '#fff'; roundRect(-rx*.75, -ry*.62, rx*1.5, R*.14, R*.06); ctx.fill(); ctx.fillStyle = '#ff5b5b'; ctx.fillRect(-rx*.75, -ry*.62 + R*.05, rx*1.5, R*.04); } }
-  if (kind === 'razzo'){ ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, -ry*.45, R*.13, 0, 7); ctx.fill(); ctx.strokeStyle = '#d94b4b'; ctx.lineWidth = 2.5; ctx.stroke();
+  if (deco && kind === 'razzo'){ ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, -ry*.45, R*.13, 0, 7); ctx.fill(); ctx.strokeStyle = '#d94b4b'; ctx.lineWidth = 2.5; ctx.stroke();
     if (!P.ground && Math.hypot(P.vx, P.vy) > 500) for (let i = 0; i < 2; i++) particles.push({type:'fire', x: P.x + rf(-R*.3, R*.3), y: P.y + RY*.6, vx: -P.vx*.1, vy: -P.vy*.1, life:.5, age:0, s: R*.18}); }
-  if (kind === 'bocciolo' && !s.hat){ ctx.save(); ctx.translate(R*.15, -ry*.95); ctx.rotate(Math.sin(t*1.2)*.12);
+  if (deco && kind === 'bocciolo' && !s.hat){ ctx.save(); ctx.translate(R*.15, -ry*.95); ctx.rotate(Math.sin(t*1.2)*.12);
     for (let i = 0; i < 5; i++){ const a = i * Math.PI * 2 / 5; ctx.fillStyle = '#ff9ec7'; ctx.beginPath(); ctx.ellipse(Math.cos(a)*R*.13, Math.sin(a)*R*.13, R*.11, R*.08, a, 0, 7); ctx.fill(); }
     ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(0, 0, R*.08, 0, 7); ctx.fill(); ctx.restore(); }
-  if (kind === 'saltimbanco' && !s.hat){ for (const d of [-1, 1]){ ctx.fillStyle = d < 0 ? '#ff6fae' : '#ffc94f'; ctx.beginPath(); ctx.moveTo(d*R*.05, -ry*.9); ctx.quadraticCurveTo(d*R*.55, -ry*1.45, d*R*.7, -ry*1.05); ctx.lineTo(d*R*.45, -ry*.78); ctx.closePath(); ctx.fill();
+  if (deco && kind === 'saltimbanco' && !s.hat){ for (const d of [-1, 1]){ ctx.fillStyle = d < 0 ? '#ff6fae' : '#ffc94f'; ctx.beginPath(); ctx.moveTo(d*R*.05, -ry*.9); ctx.quadraticCurveTo(d*R*.55, -ry*1.45, d*R*.7, -ry*1.05); ctx.lineTo(d*R*.45, -ry*.78); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#ffe27a'; ctx.beginPath(); ctx.arc(d*R*.7, -ry*1.05 + Math.sin(t*6 + d)*2, R*.07, 0, 7); ctx.fill(); } }
-  if (kind === 'esploratore' && !s.hat){ ctx.fillStyle = '#b89155'; ctx.beginPath(); ctx.ellipse(0, -ry*.86, rx*.7, R*.1, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(0, -ry*.95, rx*.42, R*.22, 0, Math.PI, 0); ctx.fill(); ctx.fillStyle = '#6b4a24'; ctx.fillRect(-rx*.42, -ry*.97, rx*.84, R*.05); }
+  if (deco && kind === 'esploratore' && !s.hat){ ctx.fillStyle = '#b89155'; ctx.beginPath(); ctx.ellipse(0, -ry*.86, rx*.7, R*.1, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(0, -ry*.95, rx*.42, R*.22, 0, Math.PI, 0); ctx.fill(); ctx.fillStyle = '#6b4a24'; ctx.fillRect(-rx*.42, -ry*.97, rx*.84, R*.05); }
+  if (!deco && kind === 'razzo' && !P.ground && Math.hypot(P.vx, P.vy) > 500) for (let i = 0; i < 2; i++) particles.push({type:'fire', x: P.x + rf(-R*.3, R*.3), y: P.y + RY*.6, vx: -P.vx*.1, vy: -P.vy*.1, life:.5, age:0, s: R*.18});
   if (m === 'sick'){ ctx.fillStyle = 'rgba(150,200,110,.35)'; ctx.fill(); }
   // sporco
   if (s.hygiene < 60){ ctx.fillStyle = 'rgba(140,100,70,.35)'; const n = Math.round((60 - s.hygiene) / 10);
     for (let i = 0; i < n; i++){ const a = i * 2.4, rr = R * (.35 + (i % 3) * .15); ctx.beginPath(); ctx.ellipse(Math.cos(a)*rr, Math.sin(a)*rr*.7 + ry*.1, R*.08, R*.06, a, 0, 7); ctx.fill(); } }
   ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(-rx*.42, -ry*.5, R*.14, R*.08, -.6, 0, 7); ctx.fill();
   if (BSH.x > 1.08){ ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.beginPath(); ctx.ellipse(0, ry*.42, rx*.5, ry*.26, 0, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = Math.max(1.5, R*.03); ctx.beginPath(); ctx.arc(0, ry*.45, R*.05, 0, 7); ctx.stroke(); }
-  if (kind === 'budino'){ ctx.fillStyle = '#b8683a'; ctx.beginPath(); ctx.moveTo(-rx*.72, -ry*.5);
+  if (deco && kind === 'budino'){ ctx.fillStyle = '#b8683a'; ctx.beginPath(); ctx.moveTo(-rx*.72, -ry*.5);
     for (let i = 0; i <= 8; i++) ctx.lineTo(-rx*.72 + rx*1.44*i/8, -ry*.5 + (i % 2 ? R*.18 : R*.02));
     ctx.quadraticCurveTo(0, -ry*1.25, -rx*.72, -ry*.5); ctx.fill();
     if (!s.hat){ ctx.fillStyle = '#ff4f6d'; ctx.beginPath(); ctx.arc(R*.05, -ry*1.02, R*.13, 0, 7); ctx.fill(); } }
-  if (kind === 'baby' && baseLook && !s.hat){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, -ry*.95);
+  if (deco && kind === 'baby' && baseLook && !s.hat){ ctx.strokeStyle = pal.b; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, -ry*.95);
     ctx.bezierCurveTo(R*.2, -ry*1.3, R*.28, -ry*1.02, R*.12, -ry*1.05); ctx.stroke(); }
-  if (kind === 'nuvola'){ ctx.fillStyle = '#fff'; for (let i = 0; i < 3; i++){ const a = t*.8 + i*2.1; ctx.globalAlpha = .6 + .4*Math.sin(t*3 + i);
+  if (deco && kind === 'nuvola'){ ctx.fillStyle = '#fff'; for (let i = 0; i < 3; i++){ const a = t*.8 + i*2.1; ctx.globalAlpha = .6 + .4*Math.sin(t*3 + i);
     star4(Math.cos(a)*rx*1.15, -ry*.9 + Math.sin(a)*R*.18, R*.07); } ctx.globalAlpha = 1; }
   // faccia
   let lx = 0, ly = 0;
@@ -4632,7 +4661,7 @@ function drawPet(t, s = state, P = pet, guest = false){
   const ex = R*.3*Math.min(1, BSH.x + .1), ey = -ry*.08 + ly + ry*(FACE_DY[shape] || 0), fx = lx, er = R*.1;
   ctx.fillStyle = '#ff8fb3'; ctx.globalAlpha = m === 'love' || m === 'shy' ? .85 : .55;
   ctx.beginPath(); ctx.ellipse(fx - ex*1.45, ey + R*.2, R*.12, R*.07, 0, 0, 7); ctx.ellipse(fx + ex*1.45, ey + R*.2, R*.12, R*.07, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
-  if (kind === 'muschio'){ ctx.fillStyle = '#8fb87a'; for (const [dx, dy] of [[-1.3,.05],[-1.1,.12],[1.3,.05],[1.1,.12]]){ ctx.beginPath(); ctx.arc(fx + dx*ex, ey + R*.13 + dy*R, R*.025, 0, 7); ctx.fill(); } }
+  if (deco && kind === 'muschio'){ ctx.fillStyle = '#8fb87a'; for (const [dx, dy] of [[-1.3,.05],[-1.1,.12],[1.3,.05],[1.1,.12]]){ ctx.beginPath(); ctx.arc(fx + dx*ex, ey + R*.13 + dy*R, R*.025, 0, 7); ctx.fill(); } }
   ctx.fillStyle = ctx.strokeStyle = INK; ctx.lineWidth = Math.max(2, R*.05); ctx.lineCap = 'round';
   const blink = (t % 4.3) < .13;
   for (const d of [-1, 1]){
@@ -5014,7 +5043,7 @@ setInterval(tick, 1000);
 setTimeout(tick, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); else if (state) save(); });
 window.addEventListener('pagehide', () => { if (state) save(); });
-const APP_VERSION = 25;
+const APP_VERSION = 26;
 /* niente zoom su iPhone: né doppio tocco né pizzico */
 document.addEventListener('gesturestart', e => e.preventDefault(), {passive: false});
 document.addEventListener('dblclick', e => e.preventDefault(), {passive: false});
@@ -5031,6 +5060,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !win
 });
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
 if (location.hash === '#debug') window.__bb = {ev: t => { ev = null; startEvent(t); }, get e(){ return ev; }, pet, ball, hoop: () => HOOP(), get W(){ return W; }, get H(){ return H; }, get s(){ return state; }, get world(){ return world; }, ensureDay, setRoom, tick, raw: () => state && blobById(state.id), render: () => render(true), get guests(){ return guests; }, visits, moveBlob, showHouse, focusBlob, get casaView(){ return casaView; }, get ff(){ return floorFood; }, get walk(){ return walk; }};
+if (location.hash === '#debug') window.__bbx = {LINES, VARS, drawSpecimen, specOf, lineChild, lineAdult, simulate, formName, decodeSave, migrateWorld, dexList, setWorld: w => { world = w; }};
 initRemote();
 })();
 </script>
