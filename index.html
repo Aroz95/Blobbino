@@ -272,6 +272,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
 .wplace{display:flex;gap:10px;align-items:center}
 .wplace small{display:block;color:var(--muted)}
 #wActions{justify-content:center}
+.item.acad{border:2px solid #b79bff;background:linear-gradient(135deg,var(--panel),var(--panel-2))}
 .big-em{font-size:56px;text-align:center;line-height:1.1}
 .sheet-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 
@@ -391,7 +392,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 26</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 27</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -685,6 +686,21 @@ const ACC = {
   farfalla:{slot:'back', n:'Ali di farfalla', price:110, e:'🦋', draw:'bfly', float:true},
   ali:{slot:'back', n:'Ali d\'angelo', price:140, e:'🪽', draw:'wings', float:true}
 };
+/* Set dell'Accademia di Magia: quattro circoli originali, ognuno con cappello, tunica e medaglione */
+const ACAD_PRICE = 600;
+const CIRCLES = {
+  cometa:  {n:'Cometa',   e:'☄️', a:'#6a4fc8', d:'#3f2c86', b:'#d9dff0', em:'star',  m:'Sognatori e curiosi: guardano sempre in alto.'},
+  brace:   {n:'Brace',    e:'🔥', a:'#ff7a33', d:'#c2481a', b:'#fff0d2', em:'flame', m:'Calorosi e coraggiosi: scaldano chiunque.'},
+  marea:   {n:'Marea',    e:'🌊', a:'#16a9a1', d:'#0b6f6a', b:'#ff9c86', em:'wave',  m:'Calmi e gentili: vanno d\'accordo con tutti.'},
+  lucciola:{n:'Lucciola', e:'✨', a:'#4cbf7f', d:'#24804f', b:'#ffe066', em:'glow',  m:'Allegri e brillanti: illuminano la notte.'}
+};
+for (const c in CIRCLES){
+  const C = CIRCLES[c];
+  ACC['acad_' + c + '_cap']  = {slot:'head', n:`Cappello · ${C.n}`,   price:0, set:'acad', circle:c, e:'🧙', draw:'acadcap'};
+  ACC['acad_' + c + '_med']  = {slot:'neck', n:`Medaglione · ${C.n}`, price:0, set:'acad', circle:c, e:'🏅', draw:'acadmed'};
+  ACC['acad_' + c + '_robe'] = {slot:'back', n:`Tunica · ${C.n}`,     price:0, set:'acad', circle:c, e:'🧥', draw:'acadrobe'};
+}
+const acadIds = c => ['acad_' + c + '_cap', 'acad_' + c + '_med', 'acad_' + c + '_robe'];
 const HATS = ACC;
 const SLOTS = {head:'Testa', face:'Viso', neck:'Collo', back:'Schiena'};
 const slotKey = id => ACC[id].slot === 'head' ? 'hat' : ACC[id].slot;
@@ -1921,8 +1937,11 @@ function renderShop(){
     }
   } else if (shopSec === 'acc'){
     $('shopNote').textContent = 'Ogni blob indossa un accessorio per parte: testa, viso, collo e schiena. Quelli comprati valgono per tutti i tuoi blob.';
+    if (shopSub.acc === 'all'){ const owned = Object.keys(CIRCLES).filter(c => acadIds(c).every(id => world && world.hats.includes(id)));
+      html += `<div class="item acad" data-acad="1"><canvas class="prev" data-acadprev="1" aria-hidden="true"></canvas><b>🪄 Set dell'Accademia di Magia</b><small>Set esclusivo: cappello, tunica e medaglione del tuo circolo. ${owned.length ? 'Hai: ' + owned.map(c => CIRCLES[c].e + ' ' + CIRCLES[c].n).join(', ') : 'Scegli tra 4 circoli.'}</small><button class="btn small" data-acadopen type="button">${STAR}${ACAD_PRICE} · Scegli</button></div>`; }
     for (const id in ACC){
       const A = ACC[id]; if (shopSub.acc !== 'all' && A.slot !== shopSub.acc) continue;
+      if (A.set && !(world && world.hats.includes(id))) continue;
       if (A.lv && (!s || s.level < A.lv)){ html += `<div class="item"><canvas class="prev" style="filter:brightness(0);opacity:.15" data-acc="${id}"></canvas><b>???</b><small>Si sblocca con l'amicizia livello ${A.lv}</small></div>`; continue; }
       const own = world && world.hats.includes(id), on = s && s[slotKey(id)] === id;
       html += `<div class="item" data-id="${id}" data-k="acc"><canvas class="prev" data-acc="${id}" aria-hidden="true"></canvas><b>${A.n}</b><small>${SLOTS[A.slot]}${A.float ? ' · lo fa planare' : ''}${on ? ' · lo indossa' : ''}</small>${own ? `<button class="btn small ${on ? 'ghost' : ''}" data-wear type="button">${on ? 'Togli' : 'Indossa'}</button>` : buyBtn('acc', id)}</div>`;
@@ -1953,6 +1972,7 @@ function drawShopPreviews(){
   const s = state, pal = s && s.stage !== 'egg' ? palFor(s) : FORMS.baby.pal;
   const worn = s ? {hat: s.hat, face: s.face, neck: s.neck, back: s.back} : {};
   if (!$('look').hidden){ const {c, w, h} = sizeCv($('lookCv')); drawMiniBlob(c, w, h, pal, worn, .3); }
+  document.querySelectorAll('#tab-negozio canvas[data-acadprev]').forEach(cv => { const {c, w, h} = sizeCv(cv); drawMiniBlob(c, w, h, pal, {hat:'acad_cometa_cap', neck:'acad_cometa_med', back:'acad_cometa_robe'}, .27); });
   document.querySelectorAll('#tab-negozio canvas[data-acc]').forEach(cv => {
     const id = cv.dataset.acc, {c, w, h} = sizeCv(cv), one = {}; one[slotKey(id)] = id;
     drawMiniBlob(c, w, h, pal, one, .27);
@@ -1990,6 +2010,7 @@ function shopAction(kind, id, act){
   save(); render(true);
 }
 function shopClick(e){
+  if (e.target.closest('[data-acadopen]')){ openAcademy(); return; }
   const b = e.target.closest('button'), it = e.target.closest('[data-id]'); if (!b || !it) return;
   const act = b.hasAttribute('data-buy') ? 'buy' : b.hasAttribute('data-wear') ? 'wear' : b.hasAttribute('data-place') ? 'place' : b.hasAttribute('data-rugset') ? 'rug' : null;
   if (act) shopAction(it.dataset.k, it.dataset.id, act);
@@ -1998,6 +2019,25 @@ document.querySelector('.seg').addEventListener('click', e => { const b = e.targ
 $('shopSub').addEventListener('click', e => { const b = e.target.closest('[data-sub]'); if (b){ shopSub[shopSec] = b.dataset.sub; renderShop(); } });
 $('shopList').addEventListener('click', shopClick);
 $('offer').addEventListener('click', shopClick);
+
+function openAcademy(){
+  const s = state, ok = s && s.stage !== 'egg';
+  const rows = Object.keys(CIRCLES).map(c => { const C = CIRCLES[c], own = acadIds(c).every(id => world.hats.includes(id)), on = ok && acadIds(c).every(id => s[slotKey(id)] === id);
+    return `<div class="rowi"><canvas data-circ="${c}" style="width:76px;height:76px;flex:none" aria-hidden="true"></canvas><div style="flex:1;min-width:0"><b>${C.e} Circolo ${C.n}</b><small>${C.m}</small></div>${own ? `<button class="btn small${on ? ' ghost' : ''}" data-acwear="${c}" type="button"${ok ? '' : ' disabled'}>${on ? 'Indossato' : 'Indossa'}</button>` : `<button class="btn small${!rich() && world.coins < ACAD_PRICE ? ' poor' : ''}" data-acbuy="${c}" type="button">${STAR}${ACAD_PRICE}</button>`}</div>`; }).join('');
+  openSheet('🪄 Accademia di Magia', `<p class="shopnote" style="margin-bottom:10px">Il set completo del circolo: cappello a punta, tunica e medaglione con lo stemma. Un acquisto, tre pezzi, per tutti i tuoi blob.</p><div class="rows">${rows}</div>`, body => {
+    body.querySelectorAll('[data-circ]').forEach(cv => { const c = cv.dataset.circ, base = ok ? Object.assign({}, s) : {stage:'baby', bv:'pois', egg:'pois'}; const [h, n, bk] = acadIds(c); drawSpecimen(cv, Object.assign(base, {hat:h, neck:n, back:bk, face:null}), false); });
+    body.addEventListener('click', e => {
+      const b = e.target.closest('[data-acbuy]'), w = e.target.closest('[data-acwear]');
+      if (b){ const c = b.dataset.acbuy;
+        if (!rich() && world.coins < ACAD_PRICE){ toast(`Servono ${ACAD_PRICE} stelline per il set: ne hai ${world.coins}.`); return; }
+        addCoins(-ACAD_PRICE); for (const id of acadIds(c)) if (!world.hats.includes(id)) world.hats.push(id);
+        if (ok) for (const id of acadIds(c)) s[slotKey(id)] = id;
+        sfx.coin(); burst && ok && burst('confetti', 30); save(); render(true);
+        toast(`Benvenuto nel Circolo ${CIRCLES[c].n}! ${CIRCLES[c].e}`, 2600); openAcademy(); }
+      if (w && ok){ const c = w.dataset.acwear; for (const id of acadIds(c)) s[slotKey(id)] = id; save(); render(true); toast(`${nm(s)} indossa il set del Circolo ${CIRCLES[c].n}`); openAcademy(); }
+    });
+  });
+}
 
 /* ================= album ================= */
 let dexStage = 'baby';
@@ -3288,6 +3328,14 @@ function emojiC(c, e, x, y, size, rot){ c.save(); c.translate(x, y); if (rot) c.
 function heartC(c, x, y, s){ c.beginPath(); c.moveTo(x, y + s*.3); c.bezierCurveTo(x, y - s*.3, x - s, y - s*.3, x - s, y + s*.2);
   c.bezierCurveTo(x - s, y + s*.7, x, y + s, x, y + s*1.2); c.bezierCurveTo(x, y + s, x + s, y + s*.7, x + s, y + s*.2); c.bezierCurveTo(x + s, y - s*.3, x, y - s*.3, x, y + s*.3); c.fill(); }
 function star5C(c, x, y, r){ c.beginPath(); for (let i = 0; i < 10; i++){ const a = -Math.PI/2 + i*Math.PI/5, rr = i % 2 ? r*.48 : r; c.lineTo(x + Math.cos(a)*rr, y + Math.sin(a)*rr); } c.closePath(); c.fill(); }
+function acadEmblem(c, em, x, y, r, col, t){
+  c.save(); c.fillStyle = c.strokeStyle = col;
+  if (em === 'star') star5C(c, x, y, r);
+  else if (em === 'flame'){ c.beginPath(); c.moveTo(x, y - r*1.2); c.quadraticCurveTo(x + r*1.1, y, x, y + r*.9); c.quadraticCurveTo(x - r*1.1, y, x, y - r*1.2); c.fill(); }
+  else if (em === 'wave'){ c.lineWidth = r*.45; c.lineCap = 'round'; c.beginPath(); c.moveTo(x - r, y + r*.2); c.quadraticCurveTo(x - r*.5, y - r*.7, x, y + r*.2); c.quadraticCurveTo(x + r*.5, y + r*1.1, x + r, y + r*.2); c.stroke(); }
+  else { c.globalAlpha = .55 + .45*Math.sin(t*4); c.beginPath(); c.arc(x, y, r*.7, 0, 7); c.fill(); c.globalAlpha = 1; star4C(c, x, y, r*1.15); }
+  c.restore();
+}
 function drawAcc(c, id, R, ry, t, pal, fx = 0, ey = null, ex = null){
   const A = ACC[id]; if (!A) return;
   if (ey === null) ey = -ry * .08; if (ex === null) ex = R * .3;
@@ -3298,6 +3346,19 @@ function drawAcc(c, id, R, ry, t, pal, fx = 0, ey = null, ex = null){
     case 'party': c.beginPath(); c.moveTo(-R*.26, top + R*.08); c.lineTo(R*.22, top + R*.04); c.lineTo(R*.04, top - R*.6); c.closePath(); c.fillStyle = '#ff8fbf'; c.fill();
       c.save(); c.clip(); c.strokeStyle = '#ffe27a'; c.lineWidth = R*.08; for (let i = 0; i < 4; i++){ c.beginPath(); c.moveTo(-R*.4, top - i*R*.18 + R*.05); c.lineTo(R*.4, top - i*R*.18 - R*.07); c.stroke(); } c.restore();
       c.fillStyle = '#7cc8ff'; c.beginPath(); c.arc(R*.04, top - R*.62, R*.08, 0, 7); c.fill(); break;
+    case 'acadcap': { const C = CIRCLES[A.circle];
+      c.fillStyle = C.d; c.beginPath(); c.ellipse(0, top + R*.06, R*.62, R*.12, 0, 0, 7); c.fill();
+      c.fillStyle = C.a; c.beginPath(); c.moveTo(-R*.34, top + R*.04); c.quadraticCurveTo(-R*.08, top - R*.55, R*.26 + Math.sin(t*1.5)*R*.03, top - R*.86); c.quadraticCurveTo(R*.1, top - R*.4, R*.34, top + R*.04); c.closePath(); c.fill();
+      c.fillStyle = C.b; c.fillRect(-R*.33, top - R*.06, R*.66, R*.09);
+      acadEmblem(c, C.em, 0, top - R*.24, R*.1, C.b, t); break; }
+    case 'acadmed': { const C = CIRCLES[A.circle];
+      c.strokeStyle = C.a; c.lineWidth = R*.08; c.beginPath(); c.moveTo(-R*.42, ry*.44); c.lineTo(0, ry*.66); c.lineTo(R*.42, ry*.44); c.stroke();
+      c.fillStyle = C.b; c.beginPath(); c.arc(0, ry*.7, R*.15, 0, 7); c.fill(); c.strokeStyle = C.d; c.lineWidth = Math.max(1.5, R*.03); c.stroke();
+      acadEmblem(c, C.em, 0, ry*.7, R*.09, C.a, t); break; }
+    case 'acadrobe': { const C = CIRCLES[A.circle], sw = Math.sin(t*2)*R*.04;
+      c.fillStyle = C.d; c.beginPath(); c.moveTo(-R*.62, -ry*.3); c.quadraticCurveTo(-R*1.08 + sw, ry*.4, -R*1.02 + sw, ry*.95); c.lineTo(R*1.02 + sw, ry*.95); c.quadraticCurveTo(R*1.08 + sw, ry*.4, R*.62, -ry*.3); c.closePath(); c.fill();
+      c.fillStyle = C.a; c.fillRect(-R*1.04 + sw, ry*.84, R*2.08, R*.09);
+      c.fillStyle = C.d; c.beginPath(); c.ellipse(0, -ry*.52, R*.5, R*.3, 0, Math.PI, 0); c.fill(); break; }
     case 'wizard': c.fillStyle = '#6a4bc4'; c.beginPath(); c.ellipse(0, top + R*.05, R*.58, R*.11, 0, 0, 7); c.fill();
       c.beginPath(); c.moveTo(-R*.32, top + R*.03); c.quadraticCurveTo(-R*.05, top - R*.5, R*.38, top - R*.78); c.quadraticCurveTo(R*.1, top - R*.35, R*.32, top + R*.03); c.closePath(); c.fill();
       c.fillStyle = '#ffe27a'; star5C(c, -R*.02, top - R*.2, R*.08); star5C(c, R*.16, top - R*.44, R*.05); break;
@@ -5043,7 +5104,7 @@ setInterval(tick, 1000);
 setTimeout(tick, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); else if (state) save(); });
 window.addEventListener('pagehide', () => { if (state) save(); });
-const APP_VERSION = 26;
+const APP_VERSION = 27;
 /* niente zoom su iPhone: né doppio tocco né pizzico */
 document.addEventListener('gesturestart', e => e.preventDefault(), {passive: false});
 document.addEventListener('dblclick', e => e.preventDefault(), {passive: false});
