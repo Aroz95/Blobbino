@@ -397,7 +397,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
     </div>
 
     <div class="foot">
-      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 30</span>
+      <span id="saveNote">Salvato su questo dispositivo</span><span class="shopnote" id="appVer" style="display:block;font-size:11px;opacity:.7">Versione 31</span>
       <button class="linkbtn" id="soundBtn" type="button">Suoni: sì</button>
       <button class="linkbtn" id="codeBtn" type="button">Codice</button>
       <button class="linkbtn" id="transferBtn" type="button">Trasferisci</button>
@@ -480,7 +480,7 @@ canvas#scene{display:block;width:100%;aspect-ratio:1/1;max-width:100%;touch-acti
 <script>
 (() => {
 const HOUR = 3600e3, MIN = 60e3, KEY = 'blobbino-v1';
-const APP_VERSION = 30;
+const APP_VERSION = 31;
 const $ = id => document.getElementById(id);
 const clamp = v => Math.max(0, Math.min(100, v));
 const lim = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -2253,6 +2253,8 @@ $('soundBtn').textContent = `Suoni: ${sound ? 'sì' : 'no'}`;
 
 /* ================= codice segreto e strumenti di test ================= */
 const DEV_HASH = '6a178f8b545406fca4557701ef1454adc6edd3dca62b722e1f7f693e8ed631b7';
+/* codici regalo: una volta per casa, salvati solo come impronta */
+const GIFT_CODES = {'d605375e0080210433d17d6a37f0d08c0ab017bd642daa11c9a7fed2b4609c86': 300};
 async function sha256hex(txt){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -2292,15 +2294,22 @@ function openCode(){
     }));
     return;
   }
-  openSheet('Codice segreto', `<p class="shopnote" style="margin-bottom:10px">Se hai un codice, scrivilo qui.</p>
+  openSheet('Codice segreto', `<p class="shopnote" style="margin-bottom:10px">Se hai un codice segreto o un codice regalo, scrivilo qui.</p>
     <input id="devCode" class="code" style="min-height:0;height:46px;font-size:16px" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Codice">
     <p class="err" id="devErr"></p>
     <div class="sheet-actions"><button class="btn" id="devGo" type="button">Attiva</button></div>`, b => {
     const go = async () => {
-      const v = $('devCode').value.trim().toUpperCase().replace(/\s+/g, '');
+      const v = $('devCode').value.trim().toUpperCase().replace(/[\s-]+/g, '');
       if (!v){ $('devErr').textContent = 'Scrivi prima il codice.'; return; }
       if (!window.crypto || !crypto.subtle){ $('devErr').textContent = 'Qui il codice non si può verificare. Prova dall\'app installata.'; return; }
       const hx = await sha256hex(v);
+      if (GIFT_CODES[hx]){
+        if (!world){ $('devErr').textContent = 'Prima dai un nome al tuo uovo.'; return; }
+        world.redeemed = world.redeemed || [];
+        if (world.redeemed.includes(hx)){ $('devErr').textContent = 'Hai già usato questo codice in questa casa.'; return; }
+        world.redeemed.push(hx); addCoins(GIFT_CODES[hx]); save(); render(true); sfx.coin(); closeSheet();
+        burst && state && burst('confetti', 30); toast(`🎁 Regalo! +${GIFT_CODES[hx]} stelline`, 3000); return;
+      }
       if (hx !== DEV_HASH){ $('devErr').textContent = 'Codice non valido.'; return; }
       if (!world){ $('devErr').textContent = 'Prima dai un nome al tuo uovo.'; return; }
       world.dev = true; save(); render(true); sfx.level(); openCode(); toast('Modalità test attiva: stelline infinite!');
