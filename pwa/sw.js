@@ -1,7 +1,8 @@
 // Blobbino: funziona anche offline.
-// Cambia VERSION quando pubblichi una nuova versione dell'app.
-const VERSION = 'blobbino-v31';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+// PREFIX, VERSION e SHELL li scrive la build (vite.config.js): ogni pubblicazione ha la sua versione.
+const PREFIX = '__CACHE_PREFIX__';
+const VERSION = '__VERSION__';
+const SHELL = __SHELL__;
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -10,7 +11,8 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
+      // solo le proprie: sullo stesso dominio può esserci anche l'altra versione di Blobbino
+      .then(keys => Promise.all(keys.filter(k => k.startsWith(PREFIX) && k !== VERSION).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
